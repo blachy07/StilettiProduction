@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VittorioProduction | Prenotazione</title>
+
+    <!-- Font stile Apple -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="icon" type="image/png" href="img/favicon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="header liquid-glass glass-navbar">
+    <nav class="navbar">
+        <a href="index.html" class="logo" aria-label="Vai alla Home">
+            <img src="img/logo.png" alt="VittorioProduction Logo" class="logo-img">
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="portfolio.html">Portfolio</a></li>
+            <li><a href="contatti.html" class="active">Contatti</a></li>
+        </ul>
+    </nav>
+</header>
+
+    <!-- Sezione Prenotazione -->
+    <section class="booking-section">
+        <div class="booking-container">
+            <div class="booking-intro">
+                <div class="section-copy">
+                    <h2>Prenota il tuo servizio</h2>
+                    <p class="booking-subtitle">
+                        Compila il modulo per ricevere un preventivo personalizzato.
+                    </p>
+                </div>
+                <img src="img/IMG_2233.jpg" alt="Foto di prova per prenotare un servizio" class="booking-photo" loading="lazy">
+            </div>
+
+            <form class="booking-form">
+
+                <!-- Tipo di Servizio -->
+                <label>TIPO DI EVENTO O SERVIZIO</label>
+                <div class="service-options">
+                    <button type="button" class="service-btn">🎉 18esimo</button>
+                    <button type="button" class="service-btn">💍 Cerimonia</button>
+                    <button type="button" class="service-btn">🥂 Evento privato</button>
+                    <button type="button" class="service-btn">🏢 Aziendale</button>
+                    <button type="button" class="service-btn">📸 Shooting brand</button>
+                    <button type="button" class="service-btn">🎬 Video</button>
+                    <button type="button" class="service-btn">✏️ Altro</button>
+                </div>
+
+                <!-- Riga 1 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>IL TUO NOME</label>
+                        <input type="text" placeholder="Nome e cognome" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>DATA DELL'EVENTO</label>
+                        <input type="date" required>
+                    </div>
+                </div>
+
+                <!-- Riga 2 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>EMAIL</label>
+                        <input type="email" placeholder="tua@email.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>TELEFONO (OPZIONALE)</label>
+                        <input type="tel" placeholder="+39 333 000 0000">
+                    </div>
+                </div>
+
+                <!-- Luogo -->
+                <div class="form-group">
+                    <label>LUOGO DELL'EVENTO</label>
+                    <input type="text" placeholder="Es. Napoli, Caserta, Salerno..." required>
+                </div>
+
+                <!-- Dettagli -->
+                <div class="form-group">
+                    <label>DETTAGLI AGGIUNTIVI (OPZIONALE)</label>
+                    <textarea rows="5"
+                        placeholder="Raccontami qualcosa in più: numero di ospiti, orari, aspettative..."></textarea>
+                </div>
+
+                <!-- Pulsante Invio -->
+                <button type="submit" class="btn-booking">
+                    INVIA RICHIESTA PREVENTIVO →
+                </button>
+
+                <!-- Note -->
+                <p class="booking-note">
+                    ✓ Risposta entro 24 ore &nbsp; • &nbsp;
+                    ✓ Preventivo gratuito &nbsp; • &nbsp;
+                    ✓ Nessun impegno
+                </p>
+
+                
+
+                <!-- WhatsApp -->
+                <!-- Contattami direttamente -->
+<div class="contact-direct">
+    <span class="contact-divider">OPPURE CONTATTAMI DIRETTAMENTE</span>
+
+    <a href="https://wa.me/393896245786"
+       class="whatsapp-btn"
+       target="_blank"
+       rel="noopener noreferrer"
+       aria-label="Contattami su WhatsApp">
+
+        <!-- Logo WhatsApp -->
+        <svg class="whatsapp-icon" xmlns="http://www.w3.org/2000/svg"
+             viewBox="0 0 32 32" fill="currentColor">
+            <path d="M16.04 2.003c-7.732 0-14 6.268-14 14 0 2.468.646 4.88 1.875 7.007L2 30l7.174-1.88a13.94 13.94 0 0 0 6.866 1.76h.006c7.732 0 14-6.268 14-14s-6.268-13.877-14.006-13.877zm0 25.438a11.39 11.39 0 0 1-5.812-1.594l-.416-.247-4.256 1.115 1.136-4.147-.27-.428a11.36 11.36 0 0 1-1.75-6.1c0-6.273 5.103-11.377 11.382-11.377 6.276 0 11.383 5.104 11.383 11.377S22.316 27.44 16.04 27.44zm6.25-8.53c-.34-.17-2.008-.992-2.32-1.104-.31-.113-.536-.17-.763.17-.226.34-.876 1.104-1.075 1.33-.198.227-.396.255-.735.085-.34-.17-1.435-.529-2.733-1.686-1.01-.902-1.693-2.016-1.892-2.356-.198-.34-.021-.523.149-.692.152-.151.34-.396.51-.594.17-.198.227-.34.34-.566.113-.227.057-.425-.028-.595-.085-.17-.763-1.84-1.045-2.524-.274-.658-.553-.568-.763-.578l-.65-.011c-.227 0-.595.085-.906.425-.31.34-1.187 1.16-1.187 2.83s1.215 3.283 1.385 3.51c.17.227 2.392 3.65 5.798 5.117.81.35 1.442.56 1.935.717.813.259 1.553.223 2.138.135.652-.097 2.008-.82 2.292-1.614.283-.793.283-1.472.198-1.614-.085-.142-.31-.227-.65-.397z"/>
+        </svg>
+
+        <div class="whatsapp-text">
+            <span class="whatsapp-title">WhatsApp</span>
+            <span class="whatsapp-subtitle">
+                Rispondo in pochi minuti · Nessuna attesa
+            </span>
+        </div>
+    </a>
+</div>
+
+            </form>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <img src="img/logo.png" alt="VittorioProduction Logo" class="footer-logo">
+        <p>© 2026 VittorioProduction. Tutti i diritti riservati.</p>
+    </footer>
+
+    <!-- Custom cursor -->
+    <div class="cursor-liquid glass-cursor" aria-hidden="true"></div>
+
+    <!-- JavaScript -->
+    <script src="js/script.js"></script>
+
+</body>
+</html>
