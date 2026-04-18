@@ -1,12 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
     const header = document.querySelector(".header");
 
-    /* Navbar glass più evidente durante lo scroll */
+    /* Navbar glass durante lo scroll */
     const updateHeader = () => {
         if (!header) return;
 
         if (window.scrollY > 50) {
-            header.style.boxShadow = "0 14px 38px rgba(29, 29, 31, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.75)";
+            header.style.boxShadow =
+                "0 14px 38px rgba(29, 29, 31, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.75)";
             header.style.background = "rgba(255, 255, 255, 0.52)";
         } else {
             header.style.boxShadow = "none";
@@ -17,15 +18,13 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("scroll", updateHeader, { passive: true });
     updateHeader();
 
-    /* Scroll fluido per eventuali link interni */
+    /* Scroll fluido per link interni */
     document.querySelectorAll('a[href^="#"]').forEach(link => {
         link.addEventListener("click", event => {
             const href = link.getAttribute("href");
-
             if (!href || href === "#") return;
 
             const target = document.querySelector(href);
-
             if (!target) return;
 
             event.preventDefault();
@@ -36,7 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
     initCustomCursor();
     initScrollReveal();
     initServiceButtons();
-    initContactForm();
 });
 
 function initCustomCursor() {
@@ -48,13 +46,10 @@ function initCustomCursor() {
     const interactiveSelector = [
         "a",
         "button",
-        ".btn-primary",
-        ".btn-secondary",
         ".btn-booking",
         ".whatsapp-btn",
         ".portfolio-item",
         ".service-btn",
-        ".glass-button",
         "input",
         "textarea"
     ].join(", ");
@@ -86,16 +81,6 @@ function initCustomCursor() {
             document.body.classList.add("cursor-visible");
         }
     }, { passive: true });
-
-    document.addEventListener("mouseleave", () => {
-        document.body.classList.remove("cursor-visible");
-    });
-
-    document.addEventListener("mouseenter", () => {
-        if (hasMoved) {
-            document.body.classList.add("cursor-visible");
-        }
-    });
 
     document.querySelectorAll(interactiveSelector).forEach(element => {
         element.addEventListener("mouseenter", () => {
@@ -143,42 +128,18 @@ function initScrollReveal() {
 
 function initServiceButtons() {
     const serviceButtons = document.querySelectorAll(".service-btn");
+    const serviceInput = document.getElementById("selected-service");
+
+    if (!serviceButtons.length) return;
 
     serviceButtons.forEach(button => {
         button.addEventListener("click", () => {
             serviceButtons.forEach(btn => btn.classList.remove("selected"));
             button.classList.add("selected");
+
+            if (serviceInput) {
+                serviceInput.value = button.textContent.trim();
+            }
         });
     });
-}
-
-function initContactForm() {
-    const form = document.querySelector(".contact-form");
-
-    if (!form) return;
-
-    form.addEventListener("submit", event => {
-        event.preventDefault();
-
-        const name = form.querySelector('input[type="text"]').value.trim();
-        const email = form.querySelector('input[type="email"]').value.trim();
-        const message = form.querySelector("textarea").value.trim();
-
-        if (name === "" || email === "" || message === "") {
-            alert("Per favore, compila tutti i campi.");
-            return;
-        }
-
-        if (!isValidEmail(email)) {
-            alert("Inserisci un indirizzo email valido.");
-            return;
-        }
-
-        alert("Messaggio inviato con successo!");
-        form.reset();
-    });
-}
-
-function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }

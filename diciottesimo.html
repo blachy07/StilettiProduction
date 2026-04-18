@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diciottesimo Alessandro | VittorioProduction</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="img/favicon.png">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- CSS Principale -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        /* Titolo della pagina */
+        .page-title-centered {
+            padding: 120px 20px 60px;
+            text-align: center;
+        }
+
+        .page-title-centered h1 {
+            font-size: 2.8rem;
+            font-weight: 600;
+        }
+
+        .page-title-centered p {
+            color: #6e6e73;
+            margin-top: 10px;
+        }
+
+        /* Galleria Fotografica */
+        .gallery {
+            padding: 40px 20px 80px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 260px));
+            justify-content: center; /* Centra le immagini */
+            gap: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 240px; /* Altezza uniforme */
+            object-fit: cover;
+            border-radius: 18px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .gallery-item img:hover {
+            transform: scale(1.03);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            padding-top: 60px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+
+        .lightbox-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 80vh;
+            border-radius: 12px;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .back-to-portfolio {
+            text-align: center;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="header liquid-glass glass-navbar">
+        <nav class="navbar">
+            <a href="index.html" class="logo" aria-label="Vai alla Home">
+                <img src="img/logo.png" alt="VittorioProduction Logo" class="logo-img">
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="portfolio.html" class="active">Portfolio</a></li>
+                <li><a href="contatti.html">Contatti</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Titolo -->
+    <section class="page-title-centered">
+        <div class="container">
+            <h1>Diciottesimo Alessandro</h1>
+            <p>Un racconto fotografico di un momento unico e indimenticabile.</p>
+        </div>
+    </section>
+
+    <!-- Galleria Fotografica -->
+    <section class="gallery">
+        <div class="gallery-grid" id="gallery"></div>
+
+        <div class="back-to-portfolio">
+            <a href="portfolio.html" class="btn-primary">← Torna al Portfolio Completo</a>
+        </div>
+    </section>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close">&times;</span>
+        <img class="lightbox-content" id="lightbox-img">
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <img src="img/logo.png" alt="VittorioProduction Logo" class="footer-logo">
+        <p>© 2026 VittorioProduction. Tutti i diritti riservati.</p>
+    </footer>
+
+    <!-- Custom Cursor -->
+    <div class="cursor-liquid glass-cursor" aria-hidden="true"></div>
+
+    <script src="js/script.js"></script>
+
+    <script>
+        // Genera dinamicamente la galleria
+        const gallery = document.getElementById("gallery");
+        const totalImages = 80;
+        const folderPath = "img/diciottesimo1/";
+
+        for (let i = 1; i <= totalImages; i++) {
+            const div = document.createElement("div");
+            div.className = "gallery-item";
+
+            const img = document.createElement("img");
+            img.src = `${folderPath}diciottesimo${i}.webp`;
+            img.alt = `Diciottesimo Foto ${i}`;
+            img.loading = "lazy"; // Lazy loading per migliorare le prestazioni
+            img.onclick = function () {
+                openLightbox(this.src);
+            };
+
+            div.appendChild(img);
+            gallery.appendChild(div);
+        }
+
+        // Funzione per aprire la lightbox
+        function openLightbox(src) {
+            document.getElementById("lightbox").style.display = "block";
+            document.getElementById("lightbox-img").src = src;
+        }
+
+        // Funzione per chiudere la lightbox
+        function closeLightbox() {
+            document.getElementById("lightbox").style.display = "none";
+        }
+    </script>
+</body>
+</html>
