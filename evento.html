@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vittorio Production</title>
+    <link rel="stylesheet" href="evento.css">
+</head>
+<body>
+
+<header class="ev-header">
+    <a href="index.html#progetti" class="back-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        INDIETRO
+    </a>
+    <div class="ev-title-block">
+        <span class="ev-cat" id="ev-cat"></span>
+        <h1 class="ev-title" id="ev-title"></h1>
+    </div>
+    <div class="ev-count" id="ev-count"></div>
+</header>
+
+<main class="gallery" id="gallery"></main>
+
+<div class="lightbox" id="lightbox" aria-hidden="true">
+    <button class="lb-close" id="lb-close" aria-label="Chiudi">✕</button>
+    <button class="lb-prev" id="lb-prev" aria-label="Precedente">&#8249;</button>
+    <button class="lb-next" id="lb-next" aria-label="Successiva">&#8250;</button>
+    <div class="lb-img-wrap">
+        <img class="lb-img" id="lb-img" src="" alt="">
+    </div>
+    <div class="lb-counter" id="lb-counter"></div>
+</div>
+
+<div class="lb-overlay" id="lb-overlay"></div>
+
+<script src="data/events.js"></script>
+<script src="evento.js"></script>
+</body>
+</html>

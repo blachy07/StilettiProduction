@@ -3,135 +3,365 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vittorio Stiletti - Fotografo e Videomaker | Stiletti Production</title>
-    <meta name="description" content="Vittorio Stiletti fotografo e videomaker. Servizi foto e video professionali per eventi, matrimoni e contenuti social.">
-    <meta name="keywords" content="Vittorio Stiletti, fotografo, videomaker, foto eventi, video matrimoni, Napoli">
-    <meta name="author" content="Vittorio Stiletti">
-
-    <!-- Font stile Apple -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-</head>
-    <!-- CSS -->
-    <link rel="icon" type="image/png" href="img/Stiletti Production (1).png">
-    <link rel="stylesheet" href="css/style.css">
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Person",
-      "name": "Vittorio Stiletti",
-      "jobTitle": "Fotografo e Videomaker",
-      "url": "https://stilettiproduction.it",
-      "sameAs": [
-        "https://instagram.com/",
-        "https://youtube.com/"
-      ]
-    }
-    </script>
-</head>
+    <title>Vittorio Production</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Header / Navbar -->
-    <header class="header liquid-glass glass-navbar">
-    <nav class="navbar">
-        <a href="index.html" class="logo" aria-label="Vai alla Home">
-            <img src="img/logo.png" alt="VittorioProduction Logo" class="logo-img">
-        </a>
-        <ul class="nav-links">
-            <li><a href="index.html" class="active">Home</a></li>
-            <li><a href="portfolio.html">Portfolio</a></li>
-            <li><a href="contatti.html">Contatti</a></li>
+<header class="header">
+    <nav class="nav">
+        <div class="logo">VITTORIO</div>
+        <ul class="menu" id="main-menu">
+            <li><a href="#home" class="active">HOME</a></li>
+            <li><a href="#chisono" data-extra-offset="100">CHI SONO</a></li>
+            <li><a href="#progetti" data-extra-offset="60">PROGETTI</a></li>
+            <li><a href="#contatti" data-extra-offset="80">CONTATTI</a></li>
         </ul>
+        <button class="menu-toggle" type="button" aria-label="Apri menu" aria-expanded="false" aria-controls="main-menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </nav>
 </header>
 
-    <!-- HERO SECTION -->
-    <section class="hero">
-    <div class="hero-content liquid-glass">
-        <h1>Vittorio Stiletti - Fotografo e Videomaker</h1>
-        <p>Servizi professionali di fotografia e videomaking per eventi, matrimoni e contenuti social</p>
-        <div class="hero-buttons">
-            <a href="portfolio.html" class="btn-primary">Scopri il Portfolio</a>
-            <a href="contatti.html" class="btn-secondary">Prenota Ora</a>
+<section id="home" class="hero">
+
+    <h1 class="hero-title-top">STILETTI</h1>
+
+    <div class="hero-content-row">
+        <div class="hero-left">
+            <span class="hero-label">CIAO,</span>
+            <p>SONO VITTORIO,<br>FOTOGRAFO E VIDEOMAKER</p>
         </div>
+
+        <div class="hero-center">
+            <img src="viso.png" alt="avatar">
+        </div>
+
+        <div class="hero-right">
+            <span class="hero-cta-label">SCOPRI I MIEI LAVORI</span>
+            <button class="btn" type="button" data-scroll-target="#progetti" data-extra-offset="60">
+                GUARDA ORA
+                <span aria-hidden="true">→</span>
+            </button>
+        </div>
+    </div>
+
+    <h1 class="hero-title-bottom">PRODUCTION</h1>
+    <button class="scroll-down" type="button" data-scroll-target="#chisono" data-extra-offset="100" aria-label="Vai alla sezione Chi sono">
+        <img src="freccia.png" alt="">
+    </button>
+
+</section>
+
+<section id="chisono" class="about-hero">
+    <div class="about-left">
+        <span class="about-label">CHI SONO</span>
+        <h2 class="about-title">VITTORIO<br>STILETTI</h2>
+        <h3 class="about-subtitle">FOTOGRAFO & VIDEOMAKER</h3>
+        <div class="about-line"></div>
+        <p class="about-text">
+            Racconto storie attraverso immagini autentiche.<br>
+            La fotografia e il video sono il mio modo di osservare<br>
+            il mondo e trasformare emozioni in qualcosa che resta.<br>
+            Ogni progetto è una nuova sfida creativa,<br>
+            ogni dettaglio conta, ogni storia merita di essere raccontata
+            nel modo giusto.
+        </p>
+        <button class="btn-outline" type="button" data-scroll-target="#progetti" data-extra-offset="60">SCOPRI DI PIÙ →</button>
+    </div>
+
+    <div class="about-right">
+        <img src="soggetto.png" alt="Vittorio Stiletti" loading="lazy">
     </div>
 </section>
 
-    <!-- SEZIONE INTRODUZIONE -->
-    <section class="about">
-        <div class="container split-card">
-            <div class="section-copy">
-                <h2>Creatività visiva per emozioni autentiche</h2>
-                <p>
-                    Benvenuto su Stiletti Production. Sono Vittorio Stiletti, fotografo e videomaker specializzato nella creazione di contenuti visivi moderni e professionali. Offro servizi foto e video per eventi, matrimoni e social media, curando ogni dettaglio per valorizzare ogni progetto.
-                </p>
-            </div>
-            <img src="img/sito3.jpg" alt="Foto di prova per una produzione creativa" class="section-photo" loading="lazy">
-        </div>
-    </section>
+<section class="about-features">
+    <div class="feature">
+        <div class="icon">📷</div>
+        <h4>FOTOGRAFIA</h4>
+        <p>Immagini che catturano l'essenza di ogni momento.</p>
+    </div>
 
-    <!-- ANTEPRIMA PORTFOLIO -->
-    <section class="portfolio">
-        <div class="container">
-            <h2 style="margin: 0;">Portfolio</h2>
-            <p class="section-subtitle" style="margin-bottom: 35px;">
-                Una selezione dei miei lavori più recenti.
+    <div class="feature">
+        <div class="icon">🎥</div>
+        <h4>VIDEO</h4>
+        <p>Video che raccontano storie e trasmettono emozioni.</p>
+    </div>
+
+    <div class="feature">
+        <div class="icon">💬</div>
+        <h4>STORYTELLING</h4>
+        <p>Ogni progetto nasce da un'idea e prende forma in una narrazione visiva.</p>
+    </div>
+
+    <div class="feature">
+        <div class="icon">💡</div>
+        <h4>CREATIVITÀ</h4>
+        <p>Soluzioni creative e visioni su misura per ogni progetto.</p>
+    </div>
+</section>
+
+<section id="progetti" class="progetti">
+
+    <div class="progetti-top">
+        <div class="progetti-left">
+            <span class="label">PORTFOLIO</span>
+            <h2>PROGETTI</h2>
+            <p>
+                Ogni progetto è una storia.<br>
+                Ogni storia, un’emozione da ricordare.
+            </p>
+            <div class="line"></div>
+        </div>
+    </div>
+
+    <div class="progetti-filter">
+        <div class="filter-left">
+            <button class="active" type="button" data-filter="tutti" aria-pressed="true">TUTTI</button>
+            <button type="button" data-filter="eventi" aria-pressed="false">EVENTI</button>
+            <button type="button" data-filter="shooting" aria-pressed="false">SHOOTING</button>
+            <button type="button" data-filter="festival-venezia" aria-pressed="false">FESTIVAL DI VENEZIA</button>
+            <button type="button" data-filter="rai" aria-pressed="false">RAI</button>
+        </div>
+        <div class="filter-right">
+            FILTRA ≡
+        </div>
+    </div>
+
+    <div class="progetti-scroll-wrapper">
+    <div class="progetti-grid" id="progetti-track">
+        <a href="evento.html?id=40-esimo" class="card big" data-category="eventi" data-categories="eventi">
+            <img src="progetti/eventi/40%20esimo/DSC03629.webp" alt="40 Esimo – Eventi" loading="lazy">
+            <div class="overlay">
+                <span>EVENTI</span>
+                <h3>40° ESIMO</h3>
+                <p class="overlay-cta">CLICCA PER VEDERE TUTTO L'EVENTO</p>
+            </div>
+        </a>
+
+        <a href="https://www.labiennale.org/it/cinema/2025/fuori-concorso/rukeli" class="card big" data-category="festival-venezia" data-categories="festival-venezia" target="_blank" rel="noopener">
+            <img src="progetti/festival-venezia/rukeli.webp" alt="Rukeli – Festival di Venezia" loading="lazy">
+            <div class="overlay">
+                <span>FESTIVAL DI VENEZIA</span>
+                <h3>RUKELI</h3>
+                <p class="overlay-cta">GUARDA AL FESTIVAL DI VENEZIA →</p>
+            </div>
+        </a>
+
+        <a href="evento.html?id=18-esimo" class="card" data-category="eventi" data-categories="eventi">
+            <img src="progetti/eventi/18%20esimo/9R7A1516.webp" alt="18 Esimo – Eventi" loading="lazy">
+            <div class="overlay">
+                <span>EVENTI</span>
+                <h3>18° ESIMO</h3>
+                <p class="overlay-cta">CLICCA PER VEDERE TUTTO L'EVENTO</p>
+            </div>
+        </a>
+
+        <a href="evento.html?id=40-esimo" class="card" data-category="eventi" data-categories="eventi">
+            <img src="progetti/eventi/40%20esimo/DSC03900.webp" alt="40 Esimo – Eventi" loading="lazy">
+            <div class="overlay">
+                <span>EVENTI</span>
+                <h3>40° ESIMO</h3>
+                <p class="overlay-cta">CLICCA PER VEDERE TUTTO L'EVENTO</p>
+            </div>
+        </a>
+
+        <a href="https://www.rai.it/raicinema/video/2026/05/Tanto-ho-le-cuffie---Reno-5ed32641-80e2-4df1-a4e9-eec857c48afa.html" class="card big" data-category="rai" data-categories="rai" target="_blank" rel="noopener">
+            <img src="progetti/rai/reno.webp" alt="Reno – RAI Cinema" loading="lazy">
+            <div class="overlay">
+                <span>RAI CINEMA</span>
+                <h3>RENO</h3>
+                <p class="overlay-cta">GUARDA SU RAI CINEMA →</p>
+            </div>
+        </a>
+
+        <a href="evento.html?id=18-esimo" class="card" data-category="eventi" data-categories="eventi">
+            <img src="progetti/eventi/18%20esimo/9R7A1693.webp" alt="18 Esimo – Eventi" loading="lazy">
+            <div class="overlay">
+                <span>EVENTI</span>
+                <h3>18° ESIMO</h3>
+                <p class="overlay-cta">CLICCA PER VEDERE TUTTO L'EVENTO</p>
+            </div>
+        </a>
+
+        <a href="evento.html?id=40-esimo" class="card" data-category="eventi" data-categories="eventi">
+            <img src="progetti/eventi/40%20esimo/DSC04681.webp" alt="40 Esimo – Eventi" loading="lazy">
+            <div class="overlay">
+                <span>EVENTI</span>
+                <h3>40° ESIMO</h3>
+                <p class="overlay-cta">CLICCA PER VEDERE TUTTO L'EVENTO</p>
+            </div>
+        </a>
+    </div>
+    </div>
+
+    <div class="cta-progetto">
+        <div class="cta-left">
+            <div class="cta-icon">→</div>
+            <div>
+                <span class="cta-small">HAI UN PROGETTO IN MENTE?</span>
+                <h3>RACCONTAMI LA TUA IDEA,</h3>
+                <p>INSIEME LA TRASFORMEREMO IN QUALCOSA DI STRAORDINARIO.</p>
+            </div>
+        </div>
+
+        <div class="cta-right">
+            <button class="btn-outline" type="button" data-scroll-target="#contatti" data-extra-offset="80">PARLIAMONE →</button>
+        </div>
+    </div>
+
+</section>
+
+<section id="contatti" class="contatti-section">
+
+    <div class="contatti-left">
+        <div class="contatti-intro">
+            <span class="label">CONTATTAMI</span>
+            <h2>PARLIAMO DEL<br>TUO PROGETTO<span class="dot">.</span></h2>
+
+            <div class="line"></div>
+
+            <p class="contatti-text">
+                Ogni grande storia inizia<br>
+                da una semplice conversazione.
             </p>
 
-            <div class="portfolio-grid">
-                <article class="portfolio-item">
-                    <img src="img/napoli2050.jpeg" alt="Napoli 2050" loading="lazy">
-                    <div class="portfolio-info">
-                        <h3>Napoli 2050</h3>
-                        <p>Ho partecipato al progetto Napoli 2050, un’esperienza innovativa che immagina la Napoli del futuro attraverso il linguaggio cinematografico. Questo percorso mi ha permesso di sviluppare creatività, competenze audiovisive e capacità di lavorare in team in un contesto professionale.</p>
-                    </div>
-                </article>
-                <article class="portfolio-item">
-                    <img src="img/rukeli2.png" alt="Foto di Rukeli" loading="lazy">
-                    <div class="portfolio-info">
-                        <h3>Rukeli</h3>
-                        <p>Ho partecipato al progetto Rukeli, diretto da Alessandro Rak, un’esperienza di alto valore artistico che ha arricchito le mie competenze nel settore audiovisivo e creativo.</p>
-                    </div>
-                </article>
-                <article class="portfolio-item">
-                    <img src="img/diciottesimo1/diciottesimo1.webp" alt="Diciottesimo Alessandro" loading="lazy">
-                    <div class="portfolio-info">
-                        <h3>Diciottesimo Alessandro</h3>
-                        <p>Servizio fotografico realizzato per celebrare un diciottesimo, raccontando con eleganza e creatività un momento unico e indimenticabile.</p>
-                    </div>
-                </article>
-            </div>
-
-            <a href="portfolio.html" class="btn-primary portfolio-btn">
-                Visualizza tutto il portfolio
-            </a>
+            <p class="contatti-sub">
+                Raccontami la tua idea, insieme possiamo trasformarla
+                in immagini che lasciano il segno.
+            </p>
         </div>
-    </section>
 
-    <!-- SEZIONE CONTATTI -->
-    <section class="contact">
-        <div class="container split-card contact-preview">
-            <img src="img/sito2.JPG" alt="Foto di prova per una richiesta progetto" class="section-photo" loading="lazy">
-            <div class="section-copy">
-                <h2 style="margin: 0;">Contattami</h2>
-                <p style="margin-bottom: 20px;">Hai un progetto in mente? Trasformiamolo in realtà.</p>
-                <a href="contatti.html" class="btn-primary">Richiedi un preventivo</a>
+        <div class="contatti-contacts">
+            <div class="contatti-box">
+                <a href="https://wa.me/393896245786?text=Ciao%20Vittorio%2C%20vorrei%20parlarti%20di%20un%20progetto." target="_blank" rel="noopener" class="box-item">
+                    <div class="box-left">
+                        <img src="icone/wh.png" alt="whatsapp">
+                        <div>
+                            <strong>WHATSAPP</strong>
+                            <p>Scrivimi direttamente</p>
+                        </div>
+                    </div>
+                    <span>→</span>
+                </a>
+                <a href="https://www.instagram.com/stiletti.production?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noopener" class="box-item">
+                    <div class="box-left">
+                        <img src="icone/ig.png" alt="instagram">
+                        <div>
+                            <strong>INSTAGRAM</strong>
+                            <p>Seguimi e scrivimi</p>
+                        </div>
+                    </div>
+                    <span>→</span>
+                </a>
+            </div>
+            <div class="contatti-bottom">
+                <img src="firma.png" class="firma" alt="firma">
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- FOOTER -->
-    <footer class="footer">
-        <img src="img/logo.png" alt="VittorioProduction Logo" class="footer-logo">
-        <p>© 2026 Vittorio Stiletti - Stiletti Production. Tutti i diritti riservati.</p>
-    </footer>
+    <form class="contatti-right" id="quote-form">
+        <h3>RICHIEDI UN PREVENTIVO</h3>
+        <p class="form-sub">Compila il modulo e raccontami il tuo progetto.</p>
 
-    <!-- Custom cursor -->
-    <div class="cursor-liquid glass-cursor" aria-hidden="true"></div>
+        <div class="event-type">
+            <span class="event-label">TIPO DI EVENTO</span>
+            <input type="hidden" name="tipo_evento" id="tipo-evento">
 
-    <!-- JavaScript -->
-    <script src="js/script.js"></script>
+            <div class="event-grid">
+
+    <button class="event-card" type="button" data-event="Compleanni" aria-pressed="false">
+        <img src="icone/icona14.png" alt="" loading="lazy">
+        <span>COMPLEANNI</span>
+    </button>
+
+    <button class="event-card" type="button" data-event="Matrimoni" aria-pressed="false">
+        <img src="icone/icona12.png" alt="" loading="lazy">
+        <span>MATRIMONI</span>
+    </button>
+
+    <button class="event-card" type="button" data-event="Eventi privati" aria-pressed="false">
+        <img src="icone/icona13.png" alt="" loading="lazy">
+        <span>EVENTI PRIVATI</span>
+    </button>
+
+    <button class="event-card" type="button" data-event="Eventi aziendali" aria-pressed="false">
+        <img src="icone/icona6.png" alt="" loading="lazy">
+        <span>EVENTI AZIENDALI</span>
+    </button>
+
+    <button class="event-card" type="button" data-event="Concerti" aria-pressed="false">
+        <img src="icone/icona16.png" alt="" loading="lazy">
+        <span>CONCERTI</span>
+    </button>
+
+    <button class="event-card" type="button" data-event="Shooting" aria-pressed="false">
+        <img src="icone/icona1.png" alt="" loading="lazy">
+        <span>SHOOTING</span>
+    </button>
+
+    <button class="event-card" type="button" data-event="Riprese drone" aria-pressed="false">
+        <img src="icone/icona8.png" alt="" loading="lazy">
+        <span>RIPRESE DRONE</span>
+    </button>
+
+    <button class="event-card" type="button" data-event="Altro" aria-pressed="false">
+        <img src="icone/icona9.png" alt="" loading="lazy">
+        <span>ALTRO</span>
+    </button>
+
+</div>
+        </div>
+
+        <div class="form-grid">
+            <input type="text" name="nome" placeholder="Inserisci il tuo nome" autocomplete="name" required>
+            <input type="date" name="data_evento" required>
+            <input type="text" name="luogo" placeholder="Dove si svolgerà l'evento?" required>
+            <textarea name="messaggio" placeholder="Raccontami il tuo progetto..." required></textarea>
+            <input type="email" name="email" placeholder="La tua email" autocomplete="email" required>
+            <input type="tel" name="telefono" placeholder="Telefono" autocomplete="tel" required>
+        </div>
+
+        <button class="btn-outline full" type="submit">INVIA LA RICHIESTA</button>
+        <p class="form-feedback" id="form-feedback" aria-live="polite"></p>
+    </form>
+
+</section>
+
+<footer class="footer">
+    <div class="footer-container">
+
+        <div class="footer-item">
+            <img src="icone/icona17.png" alt="email">
+            <span>vittorio.stiletti2007.work@gmail.com</span>
+        </div>
+
+        <div class="footer-divider"></div>
+
+        <div class="footer-item">
+            <img src="icone/icona2.png" alt="telefono">
+            <span>+39 389 624 5786</span>
+        </div>
+
+        <div class="footer-divider"></div>
+
+        <div class="footer-item">
+            <img src="icone/icona11.png" alt="posizione">
+            <span>Disponibile in tutta Italia</span>
+        </div>
+
+
+    </div>
+</footer>
+
+<script src="script.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+emailjs.init("L_BEMeiXn2X-sJTF0");
+</script>
 
 </body>
 </html>
