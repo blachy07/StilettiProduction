@@ -30,7 +30,7 @@ function markPinError() {
 
 pinBoxes.forEach((box, i) => {
     box.addEventListener("input", () => {
-        box.value = box.value.replace(/[^0-9]/g, "").slice(0, 1);
+        box.value = box.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 1).toUpperCase();
         if (box.value && i < pinBoxes.length - 1) {
             pinBoxes[i + 1].focus();
         }
@@ -50,9 +50,9 @@ pinBoxes.forEach((box, i) => {
 
     box.addEventListener("paste", (e) => {
         e.preventDefault();
-        const digits = (e.clipboardData.getData("text") || "").replace(/[^0-9]/g, "").split("");
-        pinBoxes.forEach((b, idx) => { b.value = digits[idx] || ""; });
-        const lastFilled = Math.min(digits.length, pinBoxes.length) - 1;
+        const chars = (e.clipboardData.getData("text") || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().split("");
+        pinBoxes.forEach((b, idx) => { b.value = chars[idx] || ""; });
+        const lastFilled = Math.min(chars.length, pinBoxes.length) - 1;
         if (lastFilled >= 0) pinBoxes[lastFilled].focus();
         if (pinBoxes.every((b) => b.value)) submitPin();
     });
@@ -77,7 +77,13 @@ async function submitPin() {
         const data = await res.json();
 
         if (!res.ok || !data.ok) {
-            pinFeedback.textContent = "PIN errato. Riprova.";
+            if (res.status === 429) {
+                pinFeedback.textContent = "Troppi tentativi. Riprova tra qualche minuto.";
+            } else if (res.status === 410) {
+                pinFeedback.textContent = "Questa consegna è scaduta. Contatta il fotografo.";
+            } else {
+                pinFeedback.textContent = "PIN errato. Riprova.";
+            }
             markPinError();
             clearPinBoxes();
             pinSubmit.disabled = false;
@@ -106,12 +112,14 @@ async function enterGallery(token, title, clientName) {
     galleryTitle.textContent = title || "";
     galleryClient.textContent = clientName || "GALLERIA";
 
-    const ok = await loadGallery(token);
-    if (!ok) {
+    const result = await loadGallery(token);
+    if (!result.ok) {
         sessionStorage.removeItem(SESSION_KEY);
         gallerySection.hidden = true;
         pinSection.hidden = false;
-        pinFeedback.textContent = "Sessione scaduta. Inserisci di nuovo il PIN.";
+        pinFeedback.textContent = result.error === "expired"
+            ? "Questa consegna è scaduta. Contatta il fotografo."
+            : "Sessione scaduta. Inserisci di nuovo il PIN.";
         clearPinBoxes();
         pinSubmit.disabled = false;
     }
@@ -121,12 +129,12 @@ async function loadGallery(token) {
     try {
         const res = await fetch(`/api/gallery?token=${encodeURIComponent(token)}`);
         const data = await res.json();
-        if (!res.ok || !data.ok) return false;
+        if (!res.ok || !data.ok) return { ok: false, error: data.error };
 
         renderGallery(data.images);
-        return true;
+        return { ok: true };
     } catch {
-        return false;
+        return { ok: false, error: "network" };
     }
 }
 

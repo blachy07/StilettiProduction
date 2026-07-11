@@ -1,0 +1,12 @@
+{
+  "name": "stiletti-production-site",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "latest",
+    "@vercel/blob": "latest"
+  }
+}
