@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consegna — Vittorio Production</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="consegna.css">
+</head>
+<body>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">VITTORIO</div>
+        <ul class="menu" id="main-menu">
+            <li><a href="index.html#home">HOME</a></li>
+            <li><a href="index.html#chisono">CHI SONO</a></li>
+            <li><a href="index.html#progetti">PROGETTI</a></li>
+            <li><a href="index.html#contatti">CONTATTI</a></li>
+            <li><a href="consegna.html" class="active">CONSEGNA</a></li>
+        </ul>
+        <button class="menu-toggle" type="button" aria-label="Apri menu" aria-expanded="false" aria-controls="main-menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </nav>
+</header>
+
+<main>
+    <section class="consegna-hero" id="pin-section">
+        <span class="label">CONSEGNA</span>
+        <h1 class="consegna-title">ACCESSO ALLA TUA GALLERIA</h1>
+        <div class="line"></div>
+        <p class="consegna-text">
+            Inserisci il PIN fornito per accedere alla tua galleria privata<br>
+            e visualizzare o scaricare i tuoi contenuti.
+        </p>
+
+        <div class="lock-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+
+        <span class="pin-label">INSERISCI IL PIN</span>
+
+        <form class="pin-inputs" id="pin-form" autocomplete="off">
+            <input class="pin-box" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Cifra 1" data-pin-index="0">
+            <input class="pin-box" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Cifra 2" data-pin-index="1">
+            <input class="pin-box" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Cifra 3" data-pin-index="2">
+            <input class="pin-box" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Cifra 4" data-pin-index="3">
+        </form>
+
+        <p class="pin-feedback" id="pin-feedback" aria-live="polite"></p>
+
+        <button class="pin-submit" id="pin-submit" type="button">
+            ACCEDI
+            <span aria-hidden="true">→</span>
+        </button>
+
+        <p class="consegna-note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Accesso sicuro e protetto. I tuoi contenuti sono al sicuro con noi.
+        </p>
+    </section>
+
+    <section class="consegna-gallery" id="gallery-section" hidden>
+        <div class="gallery-top">
+            <div>
+                <span class="label" id="gallery-client"></span>
+                <h2 class="gallery-title" id="gallery-title"></h2>
+            </div>
+            <div class="gallery-actions">
+                <span class="gallery-count" id="gallery-count"></span>
+                <button class="btn-outline" id="download-all" type="button">SCARICA TUTTO ⬇</button>
+                <button class="logout-btn" id="logout-btn" type="button">ESCI</button>
+            </div>
+        </div>
+        <p class="download-status" id="download-status" aria-live="polite"></p>
+        <div class="gallery-grid" id="gallery-grid"></div>
+    </section>
+</main>
+
+<script src="script.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="consegna.js"></script>
+</body>
+</html>

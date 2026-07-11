@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "esempio-40esimo",
+    "pin": "1234",
+    "clientName": "Cliente di Esempio",
+    "title": "40° Esimo — Galleria Cliente",
+    "folder": "esempio-40esimo",
+    "images": [
+      "DSC03629.webp",
+      "DSC03638.webp",
+      "DSC03672.webp"
+    ]
+  }
+]
