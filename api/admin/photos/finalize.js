@@ -18,21 +18,11 @@ module.exports = async (req, res) => {
     }
   }
 
-  const { deliveryId, blobUrl, pathname, filename, contentType, size } = body || {};
-  if (!deliveryId || !blobUrl || !pathname || !filename) {
+  const { deliveryId, blobUrl, pathname, filename, contentType, size, position } = body || {};
+  if (!deliveryId || !blobUrl || !pathname || !filename || typeof position !== "number") {
     res.status(400).json({ ok: false, error: "bad_request" });
     return;
   }
-
-  const { data: maxRow } = await supabase
-    .from("photos")
-    .select("position")
-    .eq("delivery_id", deliveryId)
-    .order("position", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const nextPosition = maxRow ? maxRow.position + 1000 : 1000;
 
   const { data, error } = await supabase
     .from("photos")
@@ -43,12 +33,31 @@ module.exports = async (req, res) => {
       filename,
       content_type: contentType || null,
       size_bytes: size || null,
-      position: nextPosition,
+      position,
     })
     .select()
     .single();
 
   if (error) {
+    // storage_pathname è unique: se questa stessa richiesta viene ritentata
+    // dal client dopo aver già avuto successo lato server (risposta persa in
+    // rete), qui va trattata come un successo idempotente, non come un errore.
+    if (error.code === "23505") {
+      const { data: existing } = await supabase
+        .from("photos")
+        .select("*")
+        .eq("storage_pathname", pathname)
+        .maybeSingle();
+
+      if (existing) {
+        res.status(200).json({
+          ok: true,
+          photo: { id: existing.id, name: existing.filename, url: existing.blob_url, contentType: existing.content_type },
+        });
+        return;
+      }
+    }
+
     res.status(500).json({ ok: false, error: "db_error" });
     return;
   }
