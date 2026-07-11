@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accesso Admin — Vittorio Production</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<div class="admin-login-wrap">
+    <form class="admin-login-card" id="login-form" autocomplete="off">
+        <span class="admin-logo">VITTORIO<span>.</span></span>
+        <div class="admin-login-sub">PANNELLO AMMINISTRATORE</div>
+
+        <div class="admin-field">
+            <label for="username">USERNAME</label>
+            <input type="text" id="username" name="username" autocomplete="username" required>
+        </div>
+
+        <div class="admin-field">
+            <label for="password">PASSWORD</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+
+        <p class="admin-login-feedback" id="login-feedback" aria-live="polite"></p>
+
+        <button class="btn-primary" type="submit" style="width:100%;">ACCEDI</button>
+    </form>
+</div>
+
+<script src="login.js"></script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Pannello Admin</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<header class="admin-header">
+    <span class="admin-logo">VITTORIO<span>.</span> ADMIN</span>
+    <div class="admin-header-actions">
+        <a class="admin-back" href="../index.html">← SITO</a>
+        <button class="admin-btn-logout" id="logout-btn" type="button">ESCI</button>
+    </div>
+</header>
+
+<main class="admin-main">
+    <div class="admin-top-row">
+        <div>
+            <div class="admin-title">CONSEGNE</div>
+            <div class="admin-subtitle" id="deliveries-count"></div>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+            <input class="admin-search" type="text" id="search-input" placeholder="Cerca per cliente o titolo...">
+            <button class="btn-primary" id="new-delivery-btn" type="button">+ NUOVA CONSEGNA</button>
+        </div>
+    </div>
+
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Titolo</th>
+                    <th>PIN</th>
+                    <th>Foto/Video</th>
+                    <th>Scadenza</th>
+                    <th>Stato</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody id="deliveries-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state" hidden>Nessuna consegna ancora. Creane una con "+ Nuova Consegna".</div>
+    </div>
+</main>
+
+<div class="modal-overlay" id="new-modal-overlay">
+    <form class="modal" id="new-delivery-form" autocomplete="off">
+        <h3>NUOVA CONSEGNA</h3>
+
+        <div class="admin-field">
+            <label for="nd-client">NOME CLIENTE</label>
+            <input type="text" id="nd-client" required>
+        </div>
+
+        <div class="admin-field">
+            <label for="nd-title">TITOLO EVENTO</label>
+            <input type="text" id="nd-title" required>
+        </div>
+
+        <div class="admin-field">
+            <label for="nd-pin">PIN</label>
+            <div class="pin-generate-row">
+                <input type="text" id="nd-pin" maxlength="6" required>
+                <button class="btn-ghost" id="nd-generate-pin" type="button">GENERA</button>
+            </div>
+        </div>
+
+        <div class="admin-field">
+            <label for="nd-expiry">SCADENZA (opzionale)</label>
+            <input type="date" id="nd-expiry">
+        </div>
+
+        <div class="admin-field">
+            <label for="nd-notes">NOTE (opzionale)</label>
+            <input type="text" id="nd-notes">
+        </div>
+
+        <p class="modal-feedback" id="new-delivery-feedback" aria-live="polite"></p>
+
+        <div class="modal-actions">
+            <button class="btn-ghost" type="button" id="nd-cancel">ANNULLA</button>
+            <button class="btn-primary" type="submit">CREA E CARICA FOTO →</button>
+        </div>
+    </form>
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>
