@@ -23,50 +23,62 @@
             <div class="admin-title" id="delivery-title">—</div>
             <div class="admin-subtitle" id="delivery-sub"></div>
         </div>
-        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <div class="flex-row">
             <button class="btn-ghost" id="copy-pin-btn" type="button">COPIA PIN</button>
             <button class="btn-danger" id="delete-delivery-btn" type="button">ELIMINA CONSEGNA</button>
         </div>
     </div>
 
-    <form class="delivery-meta-card" id="meta-form" autocomplete="off">
-        <div class="admin-field">
-            <label for="m-client">NOME CLIENTE</label>
-            <input type="text" id="m-client">
-        </div>
-        <div class="admin-field">
-            <label for="m-title">TITOLO EVENTO</label>
-            <input type="text" id="m-title">
-        </div>
-        <div class="admin-field">
-            <label for="m-pin">PIN</label>
-            <div class="pin-generate-row">
-                <input type="text" id="m-pin" maxlength="6">
-                <button class="btn-ghost" id="m-generate-pin" type="button">GENERA</button>
+    <div class="admin-loading" id="loading-state">
+        <span class="spinner"></span> Caricamento consegna...
+    </div>
+
+    <div id="delivery-content" hidden>
+        <form class="delivery-meta-card" id="meta-form" autocomplete="off">
+            <div class="admin-field">
+                <label for="m-client">NOME CLIENTE</label>
+                <input type="text" id="m-client">
             </div>
-        </div>
-        <div class="admin-field">
-            <label for="m-expiry">SCADENZA</label>
-            <input type="date" id="m-expiry">
-        </div>
-        <div class="admin-field" style="grid-column: 1 / -1;">
-            <button class="btn-primary" type="submit">SALVA MODIFICHE</button>
-            <span class="modal-feedback" id="meta-feedback" style="display:inline-block; margin-left:14px;"></span>
-        </div>
-    </form>
+            <div class="admin-field">
+                <label for="m-title">TITOLO EVENTO</label>
+                <input type="text" id="m-title">
+            </div>
+            <div class="admin-field">
+                <label for="m-pin">PIN (6 caratteri)</label>
+                <div class="pin-generate-row">
+                    <input type="text" id="m-pin" maxlength="6" minlength="6" pattern="[A-Za-z0-9]{6}" autocomplete="off">
+                    <button class="btn-ghost" id="m-generate-pin" type="button">GENERA</button>
+                </div>
+            </div>
+            <div class="admin-field">
+                <label for="m-expiry">SCADENZA</label>
+                <input type="date" id="m-expiry">
+            </div>
+            <div class="admin-field" style="grid-column: 1 / -1;">
+                <button class="btn-primary" type="submit">SALVA MODIFICHE</button>
+                <span class="modal-feedback" id="meta-feedback" style="display:inline-block; margin-left:14px;"></span>
+            </div>
+        </form>
 
-    <div class="section-label">CARICA FOTO E VIDEO</div>
-    <label class="dropzone" id="dropzone">
-        <input type="file" id="file-input" multiple accept="image/*,video/*">
-        Trascina qui le foto e i video, oppure clicca per selezionarli.<br>
-        Vengono caricati direttamente e resi disponibili al cliente senza bisogno di deploy.
-    </label>
-    <div class="upload-queue" id="upload-queue"></div>
+        <div class="section-label">CARICA FOTO E VIDEO</div>
+        <label class="dropzone" id="dropzone" tabindex="0">
+            <input type="file" id="file-input" multiple accept="image/*,video/*">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M6 10l6-6 6 6"/><path d="M4 18v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/></svg>
+            <span class="dz-title">Trascina qui le foto e i video, oppure clicca per selezionarli</span>
+            <span class="dz-sub">Vengono caricati direttamente e resi disponibili al cliente, senza bisogno di deploy.</span>
+        </label>
+        <div class="upload-queue" id="upload-queue"></div>
 
-    <div class="section-label" id="gallery-count-label">GALLERIA</div>
-    <div class="photo-grid" id="photo-grid"></div>
+        <div class="section-label" id="gallery-count-label">GALLERIA</div>
+        <div class="photo-grid" id="photo-grid"></div>
+        <div class="empty-state" id="gallery-empty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            <span>Nessun file caricato ancora. Trascina qui sopra le prime foto o i primi video.</span>
+        </div>
+    </div>
 </main>
 
+<script src="toast.js"></script>
 <script type="module" src="delivery.js"></script>
 </body>
 </html>

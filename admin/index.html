@@ -23,13 +23,36 @@
             <div class="admin-title">CONSEGNE</div>
             <div class="admin-subtitle" id="deliveries-count"></div>
         </div>
-        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+        <div class="flex-row">
             <input class="admin-search" type="text" id="search-input" placeholder="Cerca per cliente o titolo...">
             <button class="btn-primary" id="new-delivery-btn" type="button">+ NUOVA CONSEGNA</button>
         </div>
     </div>
 
-    <div class="admin-table-wrap">
+    <div class="stats-row" id="stats-row" hidden>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">CONSEGNE TOTALI</div>
+        </div>
+        <div class="stat-card accent">
+            <div class="stat-value" id="stat-active">0</div>
+            <div class="stat-label">ATTIVE</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-expired">0</div>
+            <div class="stat-label">SCADUTE</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-files">0</div>
+            <div class="stat-label">FOTO/VIDEO TOTALI</div>
+        </div>
+    </div>
+
+    <div class="admin-loading" id="loading-state">
+        <span class="spinner"></span> Caricamento consegne...
+    </div>
+
+    <div class="admin-table-wrap" id="table-wrap" hidden>
         <table class="admin-table">
             <thead>
                 <tr>
@@ -44,7 +67,10 @@
             </thead>
             <tbody id="deliveries-tbody"></tbody>
         </table>
-        <div class="empty-state" id="empty-state" hidden>Nessuna consegna ancora. Creane una con "+ Nuova Consegna".</div>
+        <div class="empty-state" id="empty-state" hidden>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span id="empty-state-text">Nessuna consegna ancora. Creane una con "+ Nuova Consegna".</span>
+        </div>
     </div>
 </main>
 
@@ -54,7 +80,7 @@
 
         <div class="admin-field">
             <label for="nd-client">NOME CLIENTE</label>
-            <input type="text" id="nd-client" required>
+            <input type="text" id="nd-client" autofocus required>
         </div>
 
         <div class="admin-field">
@@ -63,9 +89,9 @@
         </div>
 
         <div class="admin-field">
-            <label for="nd-pin">PIN</label>
+            <label for="nd-pin">PIN (6 caratteri, lettere e numeri)</label>
             <div class="pin-generate-row">
-                <input type="text" id="nd-pin" maxlength="6" required>
+                <input type="text" id="nd-pin" maxlength="6" minlength="6" pattern="[A-Za-z0-9]{6}" autocomplete="off" required>
                 <button class="btn-ghost" id="nd-generate-pin" type="button">GENERA</button>
             </div>
         </div>
@@ -89,6 +115,7 @@
     </form>
 </div>
 
+<script src="toast.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>

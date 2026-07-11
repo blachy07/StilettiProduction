@@ -351,6 +351,16 @@ table.admin-table {
     color: #ff6b81;
 }
 
+.admin-login-card.shake {
+    animation: login-shake 0.35s ease;
+}
+
+@keyframes login-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+}
+
 /* MODAL */
 .modal-overlay {
     display: none;
@@ -554,5 +564,301 @@ table.admin-table {
 
 @media (max-width: 640px) {
     .admin-main { padding: 30px 20px 60px; }
+}
+
+/* Su touch (tablet incluso) non esiste ":hover" affidabile: il pulsante di
+   eliminazione deve restare visibile a prescindere dalla larghezza schermo. */
+@media (hover: none) {
     .photo-card .remove-photo { opacity: 1; }
+}
+
+/* FOCUS ACCESSIBILE */
+button:focus-visible,
+input:focus-visible,
+.dropzone:focus-visible {
+    outline: 2px solid #ff2d55;
+    outline-offset: 3px;
+}
+
+/* MICRO-INTERAZIONI */
+.btn-primary:active,
+.btn-outline-admin:active,
+.btn-ghost:active,
+.btn-danger:active,
+.admin-btn-logout:active {
+    transform: scale(0.96);
+}
+
+.btn-primary:disabled,
+.btn-outline-admin:disabled,
+.btn-ghost:disabled,
+.btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+@keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.admin-table tbody tr,
+.photo-card,
+.stat-card {
+    animation: fade-in-up 0.3s ease both;
+}
+
+/* UTILITY */
+.flex-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* STATS ROW (dashboard) */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+.stat-card {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 18px 20px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01));
+}
+
+.stat-card .stat-value {
+    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.02em;
+}
+
+.stat-card.accent .stat-value {
+    color: #ff2d55;
+}
+
+.stat-card .stat-label {
+    color: #888;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+}
+
+/* TOAST */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: min(360px, calc(100vw - 40px));
+}
+
+.toast {
+    background: #151515;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 3px solid #ff2d55;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #eee;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.toast.in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success { border-left-color: #5adc82; }
+.toast-error { border-left-color: #ff2d55; }
+
+@media (max-width: 560px) {
+    .toast-container { left: 16px; right: 16px; bottom: 16px; max-width: none; }
+}
+
+/* LOADING */
+.admin-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #888;
+    font-size: 13px;
+    padding: 30px 0;
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #ff2d55;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* EMPTY STATE con icona */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.empty-state svg {
+    opacity: 0.35;
+}
+
+/* DROPZONE arricchita */
+.dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.dropzone svg {
+    opacity: 0.5;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.dropzone:hover svg,
+.dropzone.dragover svg {
+    opacity: 1;
+    transform: translateY(-3px);
+}
+
+.dropzone .dz-title {
+    color: #ddd;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.dropzone .dz-sub {
+    color: #777;
+    font-size: 12px;
+    max-width: 440px;
+}
+
+/* Badge "video" sulle miniature */
+.media-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    pointer-events: none;
+}
+
+.upload-item {
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.upload-item .name {
+    max-width: 200px;
+}
+
+.upload-item.error .name {
+    color: #ff6b81;
+}
+
+.upload-item .dismiss {
+    background: transparent;
+    border: none;
+    color: #777;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: none;
+}
+
+.upload-item.error .dismiss {
+    display: block;
+}
+
+.upload-item .dismiss:hover {
+    color: #ff2d55;
+}
+
+/* TABELLA -> CARD SU MOBILE/TABLET STRETTI */
+@media (max-width: 760px) {
+    .admin-table-wrap {
+        border: none;
+        overflow: visible;
+    }
+
+    table.admin-table {
+        min-width: 0;
+    }
+
+    .admin-table thead {
+        display: none;
+    }
+
+    .admin-table, .admin-table tbody, .admin-table tr, .admin-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-table tr {
+        margin-bottom: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 6px 16px;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .admin-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 12px 0;
+        white-space: normal;
+        text-align: right;
+    }
+
+    .admin-table td:last-child {
+        border-bottom: none;
+    }
+
+    .admin-table td::before {
+        content: attr(data-label);
+        font-size: 10px;
+        letter-spacing: 1.5px;
+        color: #777;
+        font-weight: 800;
+        flex-shrink: 0;
+        text-align: left;
+    }
+
+    .admin-table td .row-actions {
+        justify-content: flex-end;
+    }
 }

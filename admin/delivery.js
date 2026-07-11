@@ -6,6 +6,8 @@ const deliveryId = params.get("id");
 let deliverySlug = null;
 let currentPin = "";
 
+const ALLOWED_TYPE_PREFIXES = ["image/", "video/"];
+
 async function checkAuth() {
     const res = await fetch("/api/admin/me");
     if (!res.ok) {
@@ -22,73 +24,48 @@ function escapeHtml(str) {
 }
 
 async function loadDelivery() {
-    const res = await fetch(`/api/admin/deliveries/${encodeURIComponent(deliveryId)}`);
-    const data = await res.json();
+    document.getElementById("loading-state").hidden = false;
+    document.getElementById("delivery-content").hidden = true;
 
-    if (!res.ok || !data.ok) {
-        document.getElementById("delivery-title").textContent = "Consegna non trovata";
-        return;
-    }
+    try {
+        const res = await fetch(`/api/admin/deliveries/${encodeURIComponent(deliveryId)}`);
+        const data = await res.json();
 
-    const d = data.delivery;
-    deliverySlug = d.slug;
-    currentPin = d.pin;
-
-    document.getElementById("delivery-title").textContent = d.title;
-    document.getElementById("delivery-sub").textContent = d.clientName + " — creata il " + new Date(d.createdAt).toLocaleDateString("it-IT");
-    document.getElementById("m-client").value = d.clientName;
-    document.getElementById("m-title").value = d.title;
-    document.getElementById("m-pin").value = d.pin;
-    document.getElementById("m-expiry").value = d.expiresAt ? d.expiresAt.slice(0, 10) : "";
-
-    renderPhotos(data.photos);
-}
-
-function renderPhotos(photos) {
-    const grid = document.getElementById("photo-grid");
-    grid.innerHTML = "";
-    document.getElementById("gallery-count-label").textContent = `GALLERIA (${photos.length} FILE)`;
-
-    photos.forEach((photo) => {
-        const card = document.createElement("div");
-        card.className = "photo-card";
-        card.dataset.id = photo.id;
-
-        const isVideo = (photo.contentType || "").startsWith("video/");
-        const media = document.createElement(isVideo ? "video" : "img");
-        media.src = photo.url;
-        if (isVideo) {
-            media.muted = true;
-            media.playsInline = true;
-        } else {
-            media.alt = photo.name;
+        if (!res.ok || !data.ok) {
+            document.getElementById("delivery-title").textContent = "Consegna non trovata";
+            document.getElementById("loading-state").hidden = true;
+            return;
         }
-        card.appendChild(media);
 
-        const removeBtn = document.createElement("button");
-        removeBtn.className = "remove-photo";
-        removeBtn.type = "button";
-        removeBtn.setAttribute("aria-label", "Elimina " + photo.name);
-        removeBtn.innerHTML = "✕";
-        removeBtn.addEventListener("click", async () => {
-            if (!confirm("Eliminare questo file dalla galleria?")) return;
-            const res = await fetch(`/api/admin/photos/${encodeURIComponent(photo.id)}`, { method: "DELETE" });
-            if (res.ok) {
-                card.remove();
-                const remaining = grid.querySelectorAll(".photo-card").length;
-                document.getElementById("gallery-count-label").textContent = `GALLERIA (${remaining} FILE)`;
-            } else {
-                alert("Errore durante l'eliminazione. Riprova.");
-            }
-        });
-        card.appendChild(removeBtn);
+        const d = data.delivery;
+        deliverySlug = d.slug;
+        currentPin = d.pin;
 
-        grid.appendChild(card);
-    });
+        document.getElementById("delivery-title").textContent = d.title;
+        document.getElementById("delivery-sub").textContent =
+            d.clientName + " — creata il " + new Date(d.createdAt).toLocaleDateString("it-IT");
+        document.getElementById("m-client").value = d.clientName;
+        document.getElementById("m-title").value = d.title;
+        document.getElementById("m-pin").value = d.pin;
+        document.getElementById("m-expiry").value = d.expiresAt ? d.expiresAt.slice(0, 10) : "";
+
+        renderPhotos(data.photos);
+        document.getElementById("delivery-content").hidden = false;
+    } catch {
+        window.showToast("Errore di connessione durante il caricamento.", "error");
+    } finally {
+        document.getElementById("loading-state").hidden = true;
+    }
 }
 
-function addPhotoCard(photo) {
+function updateGalleryEmptyState() {
     const grid = document.getElementById("photo-grid");
+    const count = grid.querySelectorAll(".photo-card").length;
+    document.getElementById("gallery-empty").hidden = count > 0;
+    document.getElementById("gallery-count-label").textContent = `GALLERIA (${count} FILE)`;
+}
+
+function buildPhotoCard(photo) {
     const card = document.createElement("div");
     card.className = "photo-card";
     card.dataset.id = photo.id;
@@ -96,42 +73,82 @@ function addPhotoCard(photo) {
     const isVideo = (photo.contentType || "").startsWith("video/");
     const media = document.createElement(isVideo ? "video" : "img");
     media.src = photo.url;
+    media.loading = "lazy";
     if (isVideo) {
         media.muted = true;
         media.playsInline = true;
+        media.preload = "metadata";
+    } else {
+        media.alt = photo.name;
     }
     card.appendChild(media);
+
+    if (isVideo) {
+        const badge = document.createElement("span");
+        badge.className = "media-badge";
+        badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+        card.appendChild(badge);
+    }
 
     const removeBtn = document.createElement("button");
     removeBtn.className = "remove-photo";
     removeBtn.type = "button";
+    removeBtn.setAttribute("aria-label", "Elimina " + photo.name);
     removeBtn.innerHTML = "✕";
     removeBtn.addEventListener("click", async () => {
         if (!confirm("Eliminare questo file dalla galleria?")) return;
-        const res = await fetch(`/api/admin/photos/${encodeURIComponent(photo.id)}`, { method: "DELETE" });
-        if (res.ok) {
-            card.remove();
-            const remaining = grid.querySelectorAll(".photo-card").length;
-            document.getElementById("gallery-count-label").textContent = `GALLERIA (${remaining} FILE)`;
+        removeBtn.disabled = true;
+        try {
+            const res = await fetch(`/api/admin/photos/${encodeURIComponent(photo.id)}`, { method: "DELETE" });
+            if (res.ok) {
+                card.remove();
+                updateGalleryEmptyState();
+                window.showToast("File eliminato.", "success");
+            } else {
+                window.showToast("Errore durante l'eliminazione. Riprova.", "error");
+                removeBtn.disabled = false;
+            }
+        } catch {
+            window.showToast("Errore di connessione. Riprova.", "error");
+            removeBtn.disabled = false;
         }
     });
     card.appendChild(removeBtn);
 
-    grid.appendChild(card);
-    document.getElementById("gallery-count-label").textContent =
-        `GALLERIA (${grid.querySelectorAll(".photo-card").length} FILE)`;
+    return card;
+}
+
+function renderPhotos(photos) {
+    const grid = document.getElementById("photo-grid");
+    grid.innerHTML = "";
+    photos.forEach((photo) => grid.appendChild(buildPhotoCard(photo)));
+    updateGalleryEmptyState();
+}
+
+function addPhotoCard(photo) {
+    document.getElementById("photo-grid").appendChild(buildPhotoCard(photo));
+    updateGalleryEmptyState();
 }
 
 // META FORM
 document.getElementById("meta-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const feedback = document.getElementById("meta-feedback");
+    const pin = document.getElementById("m-pin").value.trim();
+
+    if (!/^[A-Za-z0-9]{6}$/.test(pin)) {
+        feedback.textContent = "Il PIN deve avere esattamente 6 caratteri (lettere o numeri).";
+        return;
+    }
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
     feedback.textContent = "Salvataggio...";
 
     const body = {
         clientName: document.getElementById("m-client").value.trim(),
         title: document.getElementById("m-title").value.trim(),
-        pin: document.getElementById("m-pin").value.trim(),
+        pin,
         expiresAt: document.getElementById("m-expiry").value
             ? new Date(document.getElementById("m-expiry").value + "T23:59:59").toISOString()
             : null,
@@ -152,11 +169,19 @@ document.getElementById("meta-form").addEventListener("submit", async (e) => {
 
         currentPin = data.delivery.pin;
         document.getElementById("delivery-title").textContent = data.delivery.title;
-        feedback.textContent = "Salvato.";
-        setTimeout(() => { feedback.textContent = ""; }, 2000);
+        document.getElementById("delivery-sub").textContent =
+            data.delivery.clientName + " — creata il " + new Date().toLocaleDateString("it-IT");
+        feedback.textContent = "";
+        window.showToast("Modifiche salvate.", "success");
     } catch {
         feedback.textContent = "Errore di connessione.";
+    } finally {
+        submitBtn.disabled = false;
     }
+});
+
+document.getElementById("m-pin").addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 });
 
 document.getElementById("m-generate-pin").addEventListener("click", async () => {
@@ -174,18 +199,25 @@ document.getElementById("copy-pin-btn").addEventListener("click", async () => {
         btn.textContent = "COPIATO!";
         setTimeout(() => { btn.textContent = "COPIA PIN"; }, 1500);
     } catch {
-        // ignora se il clipboard non è disponibile
+        window.showToast("Impossibile copiare: usa la selezione manuale.", "error");
     }
 });
 
-document.getElementById("delete-delivery-btn").addEventListener("click", async () => {
+document.getElementById("delete-delivery-btn").addEventListener("click", async (e) => {
     if (!confirm("Eliminare definitivamente questa consegna e tutti i file? L'operazione non è reversibile.")) return;
 
-    const res = await fetch(`/api/admin/deliveries/${encodeURIComponent(deliveryId)}`, { method: "DELETE" });
-    if (res.ok) {
-        window.location.href = "index.html";
-    } else {
-        alert("Errore durante l'eliminazione. Riprova.");
+    e.target.disabled = true;
+    try {
+        const res = await fetch(`/api/admin/deliveries/${encodeURIComponent(deliveryId)}`, { method: "DELETE" });
+        if (res.ok) {
+            window.location.href = "index.html";
+        } else {
+            window.showToast("Errore durante l'eliminazione. Riprova.", "error");
+            e.target.disabled = false;
+        }
+    } catch {
+        window.showToast("Errore di connessione. Riprova.", "error");
+        e.target.disabled = false;
     }
 });
 
@@ -199,23 +231,28 @@ const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("file-input");
 const uploadQueue = document.getElementById("upload-queue");
 
-["dragenter", "dragover"].forEach((evt) => {
-    dropzone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        dropzone.classList.add("dragover");
-    });
+// Se un file viene trasciato per errore fuori dalla dropzone, il browser di
+// default lo aprirebbe/navigherebbe via, perdendo la pagina: blocchiamo il
+// comportamento predefinito su tutta la finestra, non solo sulla dropzone.
+["dragover", "drop"].forEach((evt) => {
+    window.addEventListener(evt, (e) => e.preventDefault());
 });
 
-["dragleave", "drop"].forEach((evt) => {
-    dropzone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        dropzone.classList.remove("dragover");
-    });
-});
+dropzone.addEventListener("dragenter", () => dropzone.classList.add("dragover"));
+dropzone.addEventListener("dragover", () => dropzone.classList.add("dragover"));
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
 
 dropzone.addEventListener("drop", (e) => {
+    dropzone.classList.remove("dragover");
     const files = Array.from(e.dataTransfer.files || []);
     if (files.length) handleFiles(files);
+});
+
+dropzone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fileInput.click();
+    }
 });
 
 fileInput.addEventListener("change", () => {
@@ -228,15 +265,32 @@ function safeName(name) {
     return name.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-async function uploadOne(file) {
+function isAllowedType(file) {
+    return ALLOWED_TYPE_PREFIXES.some((prefix) => (file.type || "").startsWith(prefix));
+}
+
+function buildUploadRow(file) {
     const row = document.createElement("div");
     row.className = "upload-item";
     row.innerHTML = `
         <span class="name">${escapeHtml(file.name)}</span>
         <div class="bar-track"><div class="bar-fill"></div></div>
+        <button class="dismiss" type="button" aria-label="Rimuovi dalla lista">✕</button>
     `;
+    row.querySelector(".dismiss").addEventListener("click", () => row.remove());
     uploadQueue.appendChild(row);
+    return row;
+}
+
+async function uploadOne(file) {
+    const row = buildUploadRow(file);
     const bar = row.querySelector(".bar-fill");
+
+    if (!isAllowedType(file)) {
+        row.classList.add("error");
+        row.querySelector(".name").textContent = file.name + " — tipo di file non supportato";
+        return;
+    }
 
     try {
         const pathname = `deliveries/${deliverySlug}/${Date.now()}-${safeName(file.name)}`;
@@ -266,16 +320,17 @@ async function uploadOne(file) {
         const finalizeData = await finalizeRes.json();
 
         if (!finalizeRes.ok || !finalizeData.ok) {
-            throw new Error("finalize_failed");
+            throw new Error("Caricato ma non salvato nel database");
         }
 
         row.classList.add("done");
         bar.style.width = "100%";
         addPhotoCard({ id: finalizeData.photo.id, name: file.name, url: blob.url, contentType: file.type });
-        setTimeout(() => row.remove(), 1500);
+        setTimeout(() => row.remove(), 1200);
     } catch (err) {
         row.classList.add("error");
-        row.querySelector(".name").textContent = file.name + " — errore upload";
+        const reason = err && err.message ? err.message : "errore upload";
+        row.querySelector(".name").textContent = file.name + " — " + reason;
     }
 }
 
