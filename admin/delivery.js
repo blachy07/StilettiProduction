@@ -5,6 +5,7 @@ const deliveryId = params.get("id");
 
 let deliverySlug = null;
 let currentPin = "";
+let nextPosition = 1000;
 
 const ALLOWED_TYPE_PREFIXES = ["image/", "video/"];
 
@@ -48,6 +49,12 @@ async function loadDelivery() {
         document.getElementById("m-title").value = d.title;
         document.getElementById("m-pin").value = d.pin;
         document.getElementById("m-expiry").value = d.expiresAt ? d.expiresAt.slice(0, 10) : "";
+
+        // Le nuove posizioni partono sempre oltre l'ultima esistente: assegnata
+        // una volta sola qui, lato client, non c'è mai bisogno di una lettura
+        // "leggi il massimo attuale poi scrivi" lato server, che sotto upload
+        // concorrenti potrebbe far leggere a due file lo stesso valore.
+        nextPosition = data.photos.reduce((max, p) => Math.max(max, p.position || 0), 0) + 1000;
 
         renderPhotos(data.photos);
         document.getElementById("delivery-content").hidden = false;
@@ -226,14 +233,57 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
     window.location.href = "login.html";
 });
 
+// ============================================================
 // UPLOAD
+//
+// Causa reale del bug precedente: le righe della coda venivano create solo
+// dentro uploadOne(), cioè solo quando un worker arrivava effettivamente a
+// gestire quel file. Con 3 worker concorrenti, al massimo 3 righe potevano
+// esistere in un dato momento. Se anche solo uno dei 3 upload iniziali si
+// bloccava (una singola chiamata upload() che non si risolve né rigetta mai
+// — possibile con qualunque libreria di rete, specie su tanti file di fila),
+// quel worker restava bloccato per sempre su quel file: non prendeva mai in
+// carico i successivi, e la maggior parte dei 100 file selezionati non
+// veniva mai nemmeno tentata. Da qui: "solo 2-3 righe visibili, il resto non
+// compare, barra ferma allo 0%".
+//
+// La correzione ha due parti:
+// 1) Ogni file crea la sua riga IMMEDIATAMENTE alla selezione, prima ancora
+//    che un worker lo prenda in carico (stato "In coda") — così tutti i file
+//    sono sempre visibili, indipendentemente da quanti worker sono liberi.
+// 2) Ogni tentativo di upload è avvolto in un timeout reale (Promise.race):
+//    se upload() non risolve né rigetta entro un tempo ragionevole, il
+//    tentativo viene considerato fallito e il worker passa al file
+//    successivo. Nessun singolo file può più bloccare la coda per sempre.
+// ============================================================
+
 const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("file-input");
 const uploadQueue = document.getElementById("upload-queue");
+const uploadBanner = document.getElementById("upload-banner");
+const uploadBannerText = document.getElementById("upload-banner-text");
+const retryAllBtn = document.getElementById("retry-all-btn");
 
-// Se un file viene trasciato per errore fuori dalla dropzone, il browser di
-// default lo aprirebbe/navigherebbe via, perdendo la pagina: blocchiamo il
-// comportamento predefinito su tutta la finestra, non solo sulla dropzone.
+const CONCURRENCY = 3;
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 1500;
+
+let pendingCount = 0;
+let batchTotal = 0;
+let batchDone = 0;
+let batchFailed = 0;
+let failedItems = [];
+
+// Se l'utente ricarica/chiude la pagina mentre ci sono upload in corso o in
+// coda, quei file andrebbero persi silenziosamente (upload magari già
+// arrivato su Blob ma mai registrato su Supabase). Meglio avvisare prima.
+window.addEventListener("beforeunload", (e) => {
+    if (pendingCount > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+    }
+});
+
 ["dragover", "drop"].forEach((evt) => {
     window.addEventListener(evt, (e) => e.preventDefault());
 });
@@ -245,7 +295,7 @@ dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover
 dropzone.addEventListener("drop", (e) => {
     dropzone.classList.remove("dragover");
     const files = Array.from(e.dataTransfer.files || []);
-    if (files.length) handleFiles(files);
+    if (files.length) handleFiles(files).catch(() => {});
 });
 
 dropzone.addEventListener("keydown", (e) => {
@@ -257,7 +307,7 @@ dropzone.addEventListener("keydown", (e) => {
 
 fileInput.addEventListener("change", () => {
     const files = Array.from(fileInput.files || []);
-    if (files.length) handleFiles(files);
+    if (files.length) handleFiles(files).catch(() => {});
     fileInput.value = "";
 });
 
@@ -269,86 +319,237 @@ function isAllowedType(file) {
     return ALLOWED_TYPE_PREFIXES.some((prefix) => (file.type || "").startsWith(prefix));
 }
 
+// Scala con la dimensione del file: 30s di base + ~1s per MB, tra un minimo
+// di 30s e un massimo di 10 minuti. Un file bloccato non aspetta mai in eterno.
+function uploadTimeoutMs(file) {
+    const perMb = Math.ceil(file.size / (1024 * 1024));
+    return Math.min(10 * 60 * 1000, Math.max(30 * 1000, 30 * 1000 + perMb * 1000));
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function updateBanner() {
+    if (batchTotal === 0) {
+        uploadBanner.hidden = true;
+        return;
+    }
+    uploadBanner.hidden = false;
+    const inProgress = batchTotal - batchDone - batchFailed;
+    uploadBannerText.textContent =
+        `Caricamento: ${batchDone}/${batchTotal} completati` +
+        (inProgress > 0 ? `, ${inProgress} in corso o in coda` : "") +
+        (batchFailed > 0 ? `, ${batchFailed} falliti` : "");
+    retryAllBtn.hidden = batchFailed === 0;
+}
+
+function setItemState(item, state, statusText) {
+    item.row.className = "upload-item state-" + state;
+    item.row.querySelector(".upload-status").textContent = statusText;
+}
+
+function setItemProgress(item, pct) {
+    item.row.querySelector(".bar-fill").style.width = pct + "%";
+    item.row.querySelector(".upload-pct").textContent = Math.round(pct) + "%";
+}
+
 function buildUploadRow(file) {
     const row = document.createElement("div");
-    row.className = "upload-item";
+    row.className = "upload-item state-queued";
     row.innerHTML = `
-        <span class="name">${escapeHtml(file.name)}</span>
-        <div class="bar-track"><div class="bar-fill"></div></div>
-        <button class="dismiss" type="button" aria-label="Rimuovi dalla lista">✕</button>
+        <div class="upload-item-main">
+            <span class="name">${escapeHtml(file.name)}</span>
+            <span class="upload-status">In coda</span>
+        </div>
+        <div class="upload-item-progress">
+            <div class="bar-track"><div class="bar-fill"></div></div>
+            <span class="upload-pct">0%</span>
+        </div>
+        <div class="upload-item-actions">
+            <button class="retry-item" type="button" hidden>RIPROVA</button>
+            <button class="dismiss" type="button" aria-label="Rimuovi dalla lista">✕</button>
+        </div>
     `;
     row.querySelector(".dismiss").addEventListener("click", () => row.remove());
     uploadQueue.appendChild(row);
     return row;
 }
 
-async function uploadOne(file) {
-    const row = buildUploadRow(file);
-    const bar = row.querySelector(".bar-fill");
+// upload() è caricata da un CDN (esm.sh) invece che installata come
+// dipendenza bundlata: non posso escludere che, sotto carico o su reti
+// instabili, una singola chiamata resti sospesa senza mai risolvere né
+// rigettare. Promise.race con un timeout esplicito rende il sistema
+// affidabile A PRESCINDERE da questo: anche se upload() restasse bloccata
+// per sempre in background, il nostro codice smette comunque di aspettarla.
+function uploadWithTimeout(pathname, file, onProgress) {
+    const controller = new AbortController();
+    const timeoutMs = uploadTimeoutMs(file);
 
-    if (!isAllowedType(file)) {
-        row.classList.add("error");
-        row.querySelector(".name").textContent = file.name + " — tipo di file non supportato";
-        return;
+    const timeout = new Promise((_, reject) => {
+        setTimeout(() => {
+            controller.abort();
+            reject(new Error("timeout: upload troppo lento o bloccato"));
+        }, timeoutMs);
+    });
+
+    const uploadPromise = upload(pathname, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/photos/upload-token",
+        contentType: file.type,
+        multipart: file.size > 8 * 1024 * 1024,
+        abortSignal: controller.signal,
+        onUploadProgress: ({ percentage }) => onProgress(percentage),
+    });
+
+    return Promise.race([uploadPromise, timeout]);
+}
+
+async function finalizeItem(item, blob) {
+    const res = await fetch("/api/admin/photos/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            deliveryId,
+            blobUrl: blob.url,
+            pathname: blob.pathname,
+            filename: item.file.name,
+            contentType: item.file.type,
+            size: item.file.size,
+            position: item.position,
+        }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+        throw new Error("upload riuscito ma salvataggio nel database non riuscito");
     }
+    return data.photo;
+}
 
-    try {
-        const pathname = `deliveries/${deliverySlug}/${Date.now()}-${safeName(file.name)}`;
+async function attemptItem(item) {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            setItemState(item, "uploading", "Caricamento…");
+            setItemProgress(item, 0);
 
-        const blob = await upload(pathname, file, {
-            access: "public",
-            handleUploadUrl: "/api/admin/photos/upload-token",
-            contentType: file.type,
-            multipart: file.size > 8 * 1024 * 1024,
-            onUploadProgress: ({ percentage }) => {
-                bar.style.width = percentage + "%";
-            },
-        });
+            // Se in un tentativo precedente l'upload su Blob era già andato a
+            // buon fine e a fallire era stato solo il salvataggio, non
+            // ricarichiamo da capo il file: ripartiamo solo dal salvataggio.
+            if (!item.blob) {
+                item.blob = await uploadWithTimeout(item.pathname, item.file, (pct) => {
+                    setItemProgress(item, pct);
+                });
+            } else {
+                setItemProgress(item, 100);
+            }
 
-        const finalizeRes = await fetch("/api/admin/photos/finalize", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                deliveryId,
-                blobUrl: blob.url,
-                pathname: blob.pathname,
-                filename: file.name,
-                contentType: file.type,
-                size: file.size,
-            }),
-        });
-        const finalizeData = await finalizeRes.json();
+            setItemState(item, "processing", "Elaborazione…");
+            // Una pausa vera (non solo un microtask) così il browser fa
+            // realmente un frame di rendering e lo stato è visibile davvero,
+            // non solo assegnato e immediatamente sovrascritto.
+            await sleep(120);
 
-        if (!finalizeRes.ok || !finalizeData.ok) {
-            throw new Error("Caricato ma non salvato nel database");
+            setItemState(item, "saving", "Salvataggio…");
+            const photo = await finalizeItem(item, item.blob);
+
+            setItemState(item, "done", "Completato ✓");
+            setItemProgress(item, 100);
+            addPhotoCard({ id: photo.id, name: item.file.name, url: item.blob.url, contentType: item.file.type });
+            batchDone++;
+            updateBanner();
+            setTimeout(() => item.row.remove(), 1800);
+            return;
+        } catch (err) {
+            const isLastAttempt = attempt === MAX_ATTEMPTS;
+
+            if (isLastAttempt) {
+                const reason = err && err.message ? err.message : "errore upload";
+                setItemState(item, "error", "Errore — " + reason);
+                item.row.querySelector(".retry-item").hidden = false;
+                batchFailed++;
+                failedItems.push(item);
+                updateBanner();
+                return;
+            }
+
+            setItemState(item, "queued", `In attesa (nuovo tentativo ${attempt + 1}/${MAX_ATTEMPTS})…`);
+            await sleep(RETRY_BASE_DELAY_MS * attempt);
         }
-
-        row.classList.add("done");
-        bar.style.width = "100%";
-        addPhotoCard({ id: finalizeData.photo.id, name: file.name, url: blob.url, contentType: file.type });
-        setTimeout(() => row.remove(), 1200);
-    } catch (err) {
-        row.classList.add("error");
-        const reason = err && err.message ? err.message : "errore upload";
-        row.querySelector(".name").textContent = file.name + " — " + reason;
     }
 }
 
-const CONCURRENCY = 3;
+async function runItem(item) {
+    pendingCount++;
+    try {
+        await attemptItem(item);
+    } finally {
+        pendingCount--;
+    }
+}
 
-async function handleFiles(files) {
+function retryItem(item) {
+    batchFailed = Math.max(0, batchFailed - 1);
+    failedItems = failedItems.filter((f) => f !== item);
+    item.row.querySelector(".retry-item").hidden = true;
+    updateBanner();
+    runItem(item).catch(() => {});
+}
+
+async function runQueue(items) {
     let index = 0;
 
-    async function next() {
-        const i = index++;
-        if (i >= files.length) return;
-        await uploadOne(files[i]);
-        await next();
+    async function worker() {
+        while (index < items.length) {
+            const item = items[index++];
+            await runItem(item);
+        }
     }
 
-    const workers = Array.from({ length: Math.min(CONCURRENCY, files.length) }, next);
+    const workers = Array.from({ length: Math.min(CONCURRENCY, items.length) }, worker);
     await Promise.all(workers);
 }
+
+async function handleFiles(files) {
+    // Ogni file crea SUBITO la propria riga, prima di qualunque await: con
+    // 100 file selezionati compaiono subito 100 righe, tutte in stato
+    // "In coda", indipendentemente da quanti worker sono disponibili.
+    const items = [];
+
+    files.forEach((file) => {
+        const row = buildUploadRow(file);
+        batchTotal++;
+
+        if (!isAllowedType(file)) {
+            setItemState({ row }, "error", "Errore — tipo di file non supportato");
+            batchFailed++;
+            updateBanner();
+            return;
+        }
+
+        nextPosition += 1000;
+        const item = {
+            file,
+            row,
+            position: nextPosition,
+            pathname: `deliveries/${deliverySlug}/${Date.now()}-${safeName(file.name)}`,
+            blob: null,
+        };
+        row.querySelector(".retry-item").addEventListener("click", () => retryItem(item));
+        items.push(item);
+    });
+
+    updateBanner();
+    await runQueue(items);
+}
+
+retryAllBtn.addEventListener("click", () => {
+    const toRetry = [...failedItems];
+    failedItems = [];
+    batchFailed = 0;
+    toRetry.forEach((item) => { item.row.querySelector(".retry-item").hidden = true; });
+    updateBanner();
+    runQueue(toRetry).catch(() => {});
+});
 
 (async function init() {
     const ok = await checkAuth();
