@@ -6,6 +6,7 @@ const deliveryId = params.get("id");
 let deliverySlug = null;
 let currentPin = "";
 let nextPosition = 1000;
+let existingPhotos = []; // dal server: usato per rilevare duplicati e per riconciliare il manifest
 
 const ALLOWED_TYPE_PREFIXES = ["image/", "video/"];
 
@@ -24,6 +25,94 @@ function escapeHtml(str) {
     }[c]));
 }
 
+function photoFingerprint(name, size) {
+    return name + "::" + size;
+}
+
+// ============================================================
+// MANIFEST DI SESSIONE (recupero dopo refresh accidentale)
+//
+// Non è possibile far riprendere a un browser l'upload di un File esatto
+// dopo un ricaricamento di pagina: l'oggetto File non sopravvive al reload
+// e non usiamo la File System Access API (supporto troppo parziale tra i
+// browser per un pannello che deve funzionare ovunque). Quello che invece
+// possiamo garantire con certezza è: dopo un refresh, sapere ESATTAMENTE
+// quali file risultano già salvati sul server e quali no — cross-verificato
+// con la galleria reale restituita dall'API, non solo con quello che
+// pensavamo di aver fatto lato browser.
+// ============================================================
+
+function manifestKey() {
+    return "consegna_admin_upload_manifest:" + deliveryId;
+}
+
+function loadManifest() {
+    try {
+        return JSON.parse(sessionStorage.getItem(manifestKey()) || "{}");
+    } catch {
+        return {};
+    }
+}
+
+function saveManifest(manifest) {
+    try {
+        sessionStorage.setItem(manifestKey(), JSON.stringify(manifest));
+    } catch {
+        // storage pieno o non disponibile (es. modalità privata): il recupero dopo
+        // refresh non sarà disponibile, ma l'upload in corso non ne risente.
+    }
+}
+
+function markManifest(file, status) {
+    const manifest = loadManifest();
+    const key = photoFingerprint(file.name, file.size);
+    if (status === null) {
+        delete manifest[key];
+    } else {
+        manifest[key] = { name: file.name, size: file.size, status, updatedAt: Date.now() };
+    }
+    saveManifest(manifest);
+}
+
+function reconcileManifest(photos) {
+    const manifest = loadManifest();
+    const serverFingerprints = new Set(photos.map((p) => photoFingerprint(p.name, p.sizeBytes)));
+    const unresolved = [];
+
+    Object.keys(manifest).forEach((key) => {
+        const entry = manifest[key];
+        if (serverFingerprints.has(photoFingerprint(entry.name, entry.size))) {
+            delete manifest[key]; // confermato presente sul server: non serve più tracciarlo
+        } else if (entry.status !== "done") {
+            unresolved.push(entry);
+        }
+    });
+
+    saveManifest(manifest);
+    return unresolved;
+}
+
+function showResumeBanner(unresolved) {
+    const banner = document.getElementById("resume-banner");
+    if (!unresolved.length) {
+        banner.hidden = true;
+        return;
+    }
+
+    const names = unresolved.slice(0, 8).map((e) => e.name);
+    const extra = unresolved.length > 8 ? ` e altri ${unresolved.length - 8}` : "";
+
+    document.getElementById("resume-banner-title").textContent =
+        `${unresolved.length} file della sessione precedente non risultano salvati.`;
+    document.getElementById("resume-banner-list").textContent =
+        `${names.join(", ")}${extra}. Riseleziona questi file per ricaricarli — quelli già presenti in galleria non verranno duplicati.`;
+    banner.hidden = false;
+}
+
+document.getElementById("resume-dismiss-btn").addEventListener("click", () => {
+    document.getElementById("resume-banner").hidden = true;
+});
+
 async function loadDelivery() {
     document.getElementById("loading-state").hidden = false;
     document.getElementById("delivery-content").hidden = true;
@@ -41,6 +130,7 @@ async function loadDelivery() {
         const d = data.delivery;
         deliverySlug = d.slug;
         currentPin = d.pin;
+        existingPhotos = data.photos;
 
         document.getElementById("delivery-title").textContent = d.title;
         document.getElementById("delivery-sub").textContent =
@@ -50,13 +140,14 @@ async function loadDelivery() {
         document.getElementById("m-pin").value = d.pin;
         document.getElementById("m-expiry").value = d.expiresAt ? d.expiresAt.slice(0, 10) : "";
 
-        // Le nuove posizioni partono sempre oltre l'ultima esistente: assegnata
-        // una volta sola qui, lato client, non c'è mai bisogno di una lettura
-        // "leggi il massimo attuale poi scrivi" lato server, che sotto upload
-        // concorrenti potrebbe far leggere a due file lo stesso valore.
+        // Le nuove posizioni partono sempre oltre l'ultima esistente: assegnata una
+        // sola volta qui lato client, evitando qualunque lettura-poi-scrittura
+        // concorrente lato server che con più upload in parallelo potrebbe far
+        // leggere a due file lo stesso valore massimo.
         nextPosition = data.photos.reduce((max, p) => Math.max(max, p.position || 0), 0) + 1000;
 
         renderPhotos(data.photos);
+        showResumeBanner(reconcileManifest(data.photos));
         document.getElementById("delivery-content").hidden = false;
     } catch {
         window.showToast("Errore di connessione durante il caricamento.", "error");
@@ -109,6 +200,7 @@ function buildPhotoCard(photo) {
             const res = await fetch(`/api/admin/photos/${encodeURIComponent(photo.id)}`, { method: "DELETE" });
             if (res.ok) {
                 card.remove();
+                existingPhotos = existingPhotos.filter((p) => p.id !== photo.id);
                 updateGalleryEmptyState();
                 window.showToast("File eliminato.", "success");
             } else {
@@ -134,6 +226,7 @@ function renderPhotos(photos) {
 
 function addPhotoCard(photo) {
     document.getElementById("photo-grid").appendChild(buildPhotoCard(photo));
+    existingPhotos.push(photo);
     updateGalleryEmptyState();
 }
 
@@ -234,27 +327,29 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 });
 
 // ============================================================
-// UPLOAD
+// MOTORE DI UPLOAD — progettato per reti lente/instabili
 //
-// Causa reale del bug precedente: le righe della coda venivano create solo
-// dentro uploadOne(), cioè solo quando un worker arrivava effettivamente a
-// gestire quel file. Con 3 worker concorrenti, al massimo 3 righe potevano
-// esistere in un dato momento. Se anche solo uno dei 3 upload iniziali si
-// bloccava (una singola chiamata upload() che non si risolve né rigetta mai
-// — possibile con qualunque libreria di rete, specie su tanti file di fila),
-// quel worker restava bloccato per sempre su quel file: non prendeva mai in
-// carico i successivi, e la maggior parte dei 100 file selezionati non
-// veniva mai nemmeno tentata. Da qui: "solo 2-3 righe visibili, il resto non
-// compare, barra ferma allo 0%".
+// Le ottimizzazioni sono tutte VERE meccanismi di adattamento, non solo
+// timeout più lunghi:
 //
-// La correzione ha due parti:
-// 1) Ogni file crea la sua riga IMMEDIATAMENTE alla selezione, prima ancora
-//    che un worker lo prenda in carico (stato "In coda") — così tutti i file
-//    sono sempre visibili, indipendentemente da quanti worker sono liberi.
-// 2) Ogni tentativo di upload è avvolto in un timeout reale (Promise.race):
-//    se upload() non risolve né rigetta entro un tempo ragionevole, il
-//    tentativo viene considerato fallito e il worker passa al file
-//    successivo. Nessun singolo file può più bloccare la coda per sempre.
+// 1) Concorrenza adattiva (stile controllo di congestione): parte da un
+//    valore stimato dalla connessione (Network Information API, dove
+//    disponibile) e si RIDUCE immediatamente al primo timeout/errore,
+//    aumentando di nuovo solo dopo diversi successi consecutivi puliti.
+// 2) Timeout calibrato sulla velocità REALE osservata in questa sessione
+//    (non solo sulla dimensione del file): se la rete è lenta, i timeout
+//    si allungano automaticamente; se è veloce, restano stretti così un
+//    file davvero bloccato viene rilevato prima.
+// 3) Consapevolezza online/offline: la coda si mette in pausa quando la
+//    rete cade e riprende da sola alla riconnessione, ritentando in
+//    automatico solo i file falliti per quel motivo.
+// 4) Priorità ai file piccoli, per mantenere il sistema reattivo e dare
+//    subito un segnale di progresso anche su reti lente.
+// 5) Manifest di sessione per sapere con certezza, dopo un refresh
+//    accidentale, cosa era già stato salvato (vedi sezione sopra).
+// 6) Prevenzione duplicati: un file già presente in galleria (per nome e
+//    dimensione) non viene ricaricato, sia in caso di reselezione dopo un
+//    refresh sia in caso di doppia selezione per errore.
 // ============================================================
 
 const dropzone = document.getElementById("dropzone");
@@ -264,24 +359,147 @@ const uploadBanner = document.getElementById("upload-banner");
 const uploadBannerText = document.getElementById("upload-banner-text");
 const retryAllBtn = document.getElementById("retry-all-btn");
 
-const CONCURRENCY = 3;
-const MAX_ATTEMPTS = 3;
-const RETRY_BASE_DELAY_MS = 1500;
+const MIN_CONCURRENCY = 1;
+const MAX_ATTEMPTS = 4;
+const GOOD_STREAK_TO_GROW = 4;
+const COOLDOWN_AFTER_SHRINK = 3;
+
+let concurrencyTarget = initialConcurrency();
+let activeWorkers = 0;
+let queue = [];
+let goodStreak = 0;
+let cooldown = 0;
+let measuredBytesPerSecond = null;
+let isOnline = navigator.onLine !== false;
 
 let pendingCount = 0;
 let batchTotal = 0;
 let batchDone = 0;
 let batchFailed = 0;
+let batchSkipped = 0;
 let failedItems = [];
 
-// Se l'utente ricarica/chiude la pagina mentre ci sono upload in corso o in
-// coda, quei file andrebbero persi silenziosamente (upload magari già
-// arrivato su Blob ma mai registrato su Supabase). Meglio avvisare prima.
+function connectionInfo() {
+    return navigator.connection || navigator.webkitConnection || navigator.mozConnection || null;
+}
+
+function initialConcurrency() {
+    const conn = connectionInfo();
+    if (!conn) return 3;
+    if (conn.saveData) return 1;
+    if (conn.effectiveType === "slow-2g" || conn.effectiveType === "2g") return 1;
+    if (conn.effectiveType === "3g") return 2;
+    if (conn.effectiveType === "4g") return 4;
+    return 3;
+}
+
+function maxConcurrencyForConnection() {
+    const conn = connectionInfo();
+    if (conn && (conn.effectiveType === "2g" || conn.effectiveType === "slow-2g")) return 2;
+    return 6;
+}
+
+// Chiamata dopo ogni upload riuscito al primo tentativo, senza timeout: è il
+// segnale che la rete regge bene il carico attuale.
+function reportGoodOutcome() {
+    if (cooldown > 0) {
+        cooldown--;
+        return;
+    }
+    goodStreak++;
+    if (goodStreak >= GOOD_STREAK_TO_GROW && concurrencyTarget < maxConcurrencyForConnection()) {
+        concurrencyTarget++;
+        goodStreak = 0;
+        updateBanner();
+        spawnWorkersIfNeeded();
+    }
+}
+
+// Chiamata a ogni timeout o errore di rete: riduce subito la concorrenza,
+// invece di aspettare che l'intero lotto fallisca prima di reagire.
+function reportBadOutcome() {
+    goodStreak = 0;
+    if (concurrencyTarget > MIN_CONCURRENCY) {
+        concurrencyTarget--;
+        cooldown = COOLDOWN_AFTER_SHRINK;
+        updateBanner();
+    }
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Stima iniziale (nessun dato reale ancora) dal downlink dichiarato dal
+// browser, scontato perché il throughput reale è quasi sempre inferiore a
+// quello nominale, specie in upload su reti mobili asimmetriche.
+function estimatedBytesPerSecondFromConnection() {
+    const conn = connectionInfo();
+    if (conn && typeof conn.downlink === "number" && conn.downlink > 0) {
+        return (conn.downlink * 1_000_000 / 8) * 0.4;
+    }
+    return null;
+}
+
+// Timeout adattivo: usa la velocità REALMENTE misurata in questa sessione
+// non appena disponibile (si autocalibra file dopo file); prima di avere
+// dati reali, usa la stima da Network Information API se c'è, altrimenti
+// una stima prudente fissa. In tutti i casi lascia un ampio margine di
+// sicurezza (3x) perché la velocità di rete oscilla, specie su hotspot/4G.
+function uploadTimeoutMs(file) {
+    const bytesPerSecond =
+        measuredBytesPerSecond || estimatedBytesPerSecondFromConnection() || (100 * 1024); // ~100KB/s, stima prudente
+    const expectedSeconds = file.size / bytesPerSecond;
+    const withMargin = expectedSeconds * 3 + 15;
+    return Math.min(15 * 60 * 1000, Math.max(25 * 1000, withMargin * 1000));
+}
+
+function recordThroughputSample(bytes, elapsedSeconds) {
+    if (bytes < 500 * 1024 || elapsedSeconds < 0.2) return; // file troppo piccolo/veloce: campione non affidabile
+    const rate = bytes / elapsedSeconds;
+    measuredBytesPerSecond = measuredBytesPerSecond
+        ? measuredBytesPerSecond * 0.7 + rate * 0.3
+        : rate;
+}
+
+function updateBanner() {
+    if (batchTotal === 0) {
+        uploadBanner.hidden = true;
+        return;
+    }
+    uploadBanner.hidden = false;
+    const inProgress = batchTotal - batchDone - batchFailed - batchSkipped;
+    const parts = [`${batchDone}/${batchTotal} completati`];
+    if (inProgress > 0) parts.push(`${inProgress} in corso o in coda`);
+    if (batchSkipped > 0) parts.push(`${batchSkipped} già presenti`);
+    if (batchFailed > 0) parts.push(`${batchFailed} falliti`);
+
+    const connLabel = !isOnline
+        ? " — connessione assente, in pausa"
+        : ` — ${concurrencyTarget} in parallelo`;
+
+    uploadBannerText.textContent = "Caricamento: " + parts.join(", ") + connLabel;
+    retryAllBtn.hidden = batchFailed === 0;
+}
+
 window.addEventListener("beforeunload", (e) => {
     if (pendingCount > 0) {
         e.preventDefault();
         e.returnValue = "";
     }
+});
+
+window.addEventListener("offline", () => {
+    isOnline = false;
+    updateBanner();
+});
+
+window.addEventListener("online", () => {
+    isOnline = true;
+    updateBanner();
+    const toRetry = failedItems.filter((item) => item.offlineCaused);
+    toRetry.forEach((item) => retryItem(item));
+    spawnWorkersIfNeeded();
 });
 
 ["dragover", "drop"].forEach((evt) => {
@@ -295,7 +513,7 @@ dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover
 dropzone.addEventListener("drop", (e) => {
     dropzone.classList.remove("dragover");
     const files = Array.from(e.dataTransfer.files || []);
-    if (files.length) handleFiles(files).catch(() => {});
+    if (files.length) handleFiles(files);
 });
 
 dropzone.addEventListener("keydown", (e) => {
@@ -307,7 +525,7 @@ dropzone.addEventListener("keydown", (e) => {
 
 fileInput.addEventListener("change", () => {
     const files = Array.from(fileInput.files || []);
-    if (files.length) handleFiles(files).catch(() => {});
+    if (files.length) handleFiles(files);
     fileInput.value = "";
 });
 
@@ -317,31 +535,6 @@ function safeName(name) {
 
 function isAllowedType(file) {
     return ALLOWED_TYPE_PREFIXES.some((prefix) => (file.type || "").startsWith(prefix));
-}
-
-// Scala con la dimensione del file: 30s di base + ~1s per MB, tra un minimo
-// di 30s e un massimo di 10 minuti. Un file bloccato non aspetta mai in eterno.
-function uploadTimeoutMs(file) {
-    const perMb = Math.ceil(file.size / (1024 * 1024));
-    return Math.min(10 * 60 * 1000, Math.max(30 * 1000, 30 * 1000 + perMb * 1000));
-}
-
-function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function updateBanner() {
-    if (batchTotal === 0) {
-        uploadBanner.hidden = true;
-        return;
-    }
-    uploadBanner.hidden = false;
-    const inProgress = batchTotal - batchDone - batchFailed;
-    uploadBannerText.textContent =
-        `Caricamento: ${batchDone}/${batchTotal} completati` +
-        (inProgress > 0 ? `, ${inProgress} in corso o in coda` : "") +
-        (batchFailed > 0 ? `, ${batchFailed} falliti` : "");
-    retryAllBtn.hidden = batchFailed === 0;
 }
 
 function setItemState(item, state, statusText) {
@@ -376,12 +569,11 @@ function buildUploadRow(file) {
     return row;
 }
 
-// upload() è caricata da un CDN (esm.sh) invece che installata come
-// dipendenza bundlata: non posso escludere che, sotto carico o su reti
-// instabili, una singola chiamata resti sospesa senza mai risolvere né
-// rigettare. Promise.race con un timeout esplicito rende il sistema
-// affidabile A PRESCINDERE da questo: anche se upload() restasse bloccata
-// per sempre in background, il nostro codice smette comunque di aspettarla.
+// upload() è caricata da CDN (esm.sh) invece che bundlata come dipendenza:
+// non possiamo escludere che, sotto carico o su reti instabili, una singola
+// chiamata resti sospesa senza mai risolvere né rigettare. Il timeout
+// esplicito (AbortController + Promise.race) rende il sistema affidabile A
+// PRESCINDERE da questo comportamento della libreria.
 function uploadWithTimeout(pathname, file, onProgress) {
     const controller = new AbortController();
     const timeoutMs = uploadTimeoutMs(file);
@@ -389,7 +581,7 @@ function uploadWithTimeout(pathname, file, onProgress) {
     const timeout = new Promise((_, reject) => {
         setTimeout(() => {
             controller.abort();
-            reject(new Error("timeout: upload troppo lento o bloccato"));
+            reject(new Error("timeout: rete troppo lenta o upload bloccato"));
         }, timeoutMs);
     });
 
@@ -397,7 +589,7 @@ function uploadWithTimeout(pathname, file, onProgress) {
         access: "public",
         handleUploadUrl: "/api/admin/photos/upload-token",
         contentType: file.type,
-        multipart: file.size > 8 * 1024 * 1024,
+        multipart: file.size > 6 * 1024 * 1024,
         abortSignal: controller.signal,
         onUploadProgress: ({ percentage }) => onProgress(percentage),
     });
@@ -429,42 +621,49 @@ async function finalizeItem(item, blob) {
 async function attemptItem(item) {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try {
-            setItemState(item, "uploading", "Caricamento…");
+            setItemState(item, "uploading", isOnline ? "Caricamento…" : "In attesa di rete…");
             setItemProgress(item, 0);
 
-            // Se in un tentativo precedente l'upload su Blob era già andato a
-            // buon fine e a fallire era stato solo il salvataggio, non
-            // ricarichiamo da capo il file: ripartiamo solo dal salvataggio.
+            if (!isOnline) {
+                await waitForOnline();
+            }
+
             if (!item.blob) {
+                const startedAt = performance.now();
                 item.blob = await uploadWithTimeout(item.pathname, item.file, (pct) => {
                     setItemProgress(item, pct);
                 });
+                const elapsedSeconds = (performance.now() - startedAt) / 1000;
+                recordThroughputSample(item.file.size, elapsedSeconds);
+                if (attempt === 1) reportGoodOutcome();
             } else {
                 setItemProgress(item, 100);
             }
 
             setItemState(item, "processing", "Elaborazione…");
-            // Una pausa vera (non solo un microtask) così il browser fa
-            // realmente un frame di rendering e lo stato è visibile davvero,
-            // non solo assegnato e immediatamente sovrascritto.
             await sleep(120);
 
             setItemState(item, "saving", "Salvataggio…");
+            markManifest(item.file, "saving");
             const photo = await finalizeItem(item, item.blob);
 
             setItemState(item, "done", "Completato ✓");
             setItemProgress(item, 100);
-            addPhotoCard({ id: photo.id, name: item.file.name, url: item.blob.url, contentType: item.file.type });
+            markManifest(item.file, "done");
+            addPhotoCard({ id: photo.id, name: item.file.name, url: item.blob.url, contentType: item.file.type, sizeBytes: item.file.size });
             batchDone++;
             updateBanner();
             setTimeout(() => item.row.remove(), 1800);
             return;
         } catch (err) {
-            const isLastAttempt = attempt === MAX_ATTEMPTS;
+            item.offlineCaused = !isOnline;
+            if (!item.offlineCaused) reportBadOutcome();
 
+            const isLastAttempt = attempt === MAX_ATTEMPTS;
             if (isLastAttempt) {
                 const reason = err && err.message ? err.message : "errore upload";
                 setItemState(item, "error", "Errore — " + reason);
+                markManifest(item.file, "error");
                 item.row.querySelector(".retry-item").hidden = false;
                 batchFailed++;
                 failedItems.push(item);
@@ -473,9 +672,23 @@ async function attemptItem(item) {
             }
 
             setItemState(item, "queued", `In attesa (nuovo tentativo ${attempt + 1}/${MAX_ATTEMPTS})…`);
-            await sleep(RETRY_BASE_DELAY_MS * attempt);
+            // Backoff esponenziale con jitter: evita che molti file ritentino tutti
+            // nello stesso istante (che ricreerebbe lo stesso sovraccarico di rete
+            // che ha causato il fallimento).
+            const backoff = Math.min(20000, 1500 * 2 ** (attempt - 1));
+            await sleep(backoff + Math.random() * 800);
         }
     }
+}
+
+function waitForOnline() {
+    if (isOnline) return Promise.resolve();
+    return new Promise((resolve) => {
+        window.addEventListener("online", function handler() {
+            window.removeEventListener("online", handler);
+            resolve();
+        });
+    });
 }
 
 async function runItem(item) {
@@ -487,35 +700,51 @@ async function runItem(item) {
     }
 }
 
+function spawnWorkersIfNeeded() {
+    while (isOnline && activeWorkers < concurrencyTarget && queue.length > 0) {
+        activeWorkers++;
+        workerLoop();
+    }
+}
+
+async function workerLoop() {
+    while (isOnline && activeWorkers <= concurrencyTarget && queue.length > 0) {
+        const item = queue.shift();
+        if (!item) break;
+        await runItem(item);
+    }
+    activeWorkers--;
+    spawnWorkersIfNeeded();
+}
+
+function enqueue(item) {
+    queue.push(item);
+    spawnWorkersIfNeeded();
+}
+
 function retryItem(item) {
     batchFailed = Math.max(0, batchFailed - 1);
     failedItems = failedItems.filter((f) => f !== item);
     item.row.querySelector(".retry-item").hidden = true;
+    item.offlineCaused = false;
     updateBanner();
-    runItem(item).catch(() => {});
+    enqueue(item);
 }
 
-async function runQueue(items) {
-    let index = 0;
-
-    async function worker() {
-        while (index < items.length) {
-            const item = items[index++];
-            await runItem(item);
-        }
-    }
-
-    const workers = Array.from({ length: Math.min(CONCURRENCY, items.length) }, worker);
-    await Promise.all(workers);
+function markSkipped(row, reason) {
+    setItemState({ row }, "skipped", reason);
+    batchSkipped++;
+    updateBanner();
 }
 
-async function handleFiles(files) {
-    // Ogni file crea SUBITO la propria riga, prima di qualunque await: con
-    // 100 file selezionati compaiono subito 100 righe, tutte in stato
-    // "In coda", indipendentemente da quanti worker sono disponibili.
-    const items = [];
+function handleFiles(files) {
+    // Priorità ai file piccoli: mantengono il sistema reattivo e danno un segnale
+    // di progresso rapido anche su reti lente, invece di far attendere tutto il
+    // lotto dietro a un video grande partito per primo per puro caso di selezione.
+    const sorted = [...files].sort((a, b) => a.size - b.size);
+    const existingFingerprints = new Set(existingPhotos.map((p) => photoFingerprint(p.name, p.sizeBytes)));
 
-    files.forEach((file) => {
+    sorted.forEach((file) => {
         const row = buildUploadRow(file);
         batchTotal++;
 
@@ -526,6 +755,12 @@ async function handleFiles(files) {
             return;
         }
 
+        if (existingFingerprints.has(photoFingerprint(file.name, file.size))) {
+            markSkipped(row, "Già presente in galleria");
+            setTimeout(() => row.remove(), 2500);
+            return;
+        }
+
         nextPosition += 1000;
         const item = {
             file,
@@ -533,22 +768,26 @@ async function handleFiles(files) {
             position: nextPosition,
             pathname: `deliveries/${deliverySlug}/${Date.now()}-${safeName(file.name)}`,
             blob: null,
+            offlineCaused: false,
         };
         row.querySelector(".retry-item").addEventListener("click", () => retryItem(item));
-        items.push(item);
+        markManifest(file, "queued");
+        enqueue(item);
     });
 
     updateBanner();
-    await runQueue(items);
 }
 
 retryAllBtn.addEventListener("click", () => {
     const toRetry = [...failedItems];
     failedItems = [];
     batchFailed = 0;
-    toRetry.forEach((item) => { item.row.querySelector(".retry-item").hidden = true; });
+    toRetry.forEach((item) => {
+        item.row.querySelector(".retry-item").hidden = true;
+        item.offlineCaused = false;
+        enqueue(item);
+    });
     updateBanner();
-    runQueue(toRetry).catch(() => {});
 });
 
 (async function init() {
