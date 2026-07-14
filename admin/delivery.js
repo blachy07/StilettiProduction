@@ -1,4 +1,32 @@
-import { upload } from "https://esm.sh/@vercel/blob@latest/client";
+// upload() viene caricata da CDN (esm.sh) invece che bundlata come dipendenza,
+// perché il sito non ha uno step di build. Il protocollo di token tra client
+// e server è specifico della versione: caricare "@latest" dal CDN mentre il
+// server usa una versione diversa (risolta indipendentemente da npm install)
+// produce esattamente il sintomo osservato — il token si genera con successo,
+// ma la richiesta diretta verso lo storage Vercel viene rifiutata con 400.
+// Per eliminare la possibilità di questo disallineamento, la versione esatta
+// viene chiesta al server (che la legge dalla propria dipendenza realmente
+// installata) e il client importa dal CDN quella stessa identica versione.
+let uploadFnPromise = null;
+
+function getUploadFn() {
+    if (!uploadFnPromise) {
+        uploadFnPromise = (async () => {
+            let version = "latest";
+            try {
+                const res = await fetch("/api/admin/blob-version");
+                const data = await res.json();
+                if (data && data.ok && data.version) version = data.version;
+            } catch {
+                // in caso di errore si tenta comunque con "latest": meglio un
+                // tentativo (che potrebbe funzionare) che nessun upload possibile.
+            }
+            const mod = await import(`https://esm.sh/@vercel/blob@${version}/client`);
+            return mod.upload;
+        })();
+    }
+    return uploadFnPromise;
+}
 
 const params = new URLSearchParams(window.location.search);
 const deliveryId = params.get("id");
@@ -569,12 +597,12 @@ function buildUploadRow(file) {
     return row;
 }
 
-// upload() è caricata da CDN (esm.sh) invece che bundlata come dipendenza:
-// non possiamo escludere che, sotto carico o su reti instabili, una singola
-// chiamata resti sospesa senza mai risolvere né rigettare. Il timeout
-// esplicito (AbortController + Promise.race) rende il sistema affidabile A
-// PRESCINDERE da questo comportamento della libreria.
-function uploadWithTimeout(pathname, file, onProgress) {
+// Il timeout esplicito (AbortController + Promise.race) resta comunque utile
+// indipendentemente dal bug di versione corretto sopra: rende il sistema
+// affidabile anche nel caso, sotto carico o su reti instabili, in cui una
+// chiamata resti sospesa senza mai risolvere né rigettare.
+async function uploadWithTimeout(pathname, file, onProgress) {
+    const uploadFn = await getUploadFn();
     const controller = new AbortController();
     const timeoutMs = uploadTimeoutMs(file);
 
@@ -585,10 +613,13 @@ function uploadWithTimeout(pathname, file, onProgress) {
         }, timeoutMs);
     });
 
-    const uploadPromise = upload(pathname, file, {
+    // Opzioni ridotte al set minimo documentato: "contentType" è stato
+    // rimosso perché upload() lo ricava già correttamente dal File stesso,
+    // e passarlo esplicitamente era un valore ridondante che poteva
+    // contribuire a una richiesta non conforme a quanto il token si aspettava.
+    const uploadPromise = uploadFn(pathname, file, {
         access: "public",
         handleUploadUrl: "/api/admin/photos/upload-token",
-        contentType: file.type,
         multipart: file.size > 6 * 1024 * 1024,
         abortSignal: controller.signal,
         onUploadProgress: ({ percentage }) => onProgress(percentage),
