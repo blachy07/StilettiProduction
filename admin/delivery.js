@@ -16,12 +16,16 @@ function getUploadFn() {
             try {
                 const res = await fetch("/api/admin/blob-version");
                 const data = await res.json();
+                // --- LOG TEMPORANEO DI DEBUG: rimuovere una volta trovata la causa del 400 ---
+                console.log("[upload DEBUG] risposta /api/admin/blob-version:", data);
+                // --- FINE LOG TEMPORANEO ---
                 if (data && data.ok && data.version) version = data.version;
-            } catch {
-                // in caso di errore si tenta comunque con "latest": meglio un
-                // tentativo (che potrebbe funzionare) che nessun upload possibile.
+            } catch (err) {
+                console.log("[upload DEBUG] errore nel leggere la versione dal server:", err);
             }
-            const mod = await import(`https://esm.sh/@vercel/blob@${version}/client`);
+            const url = `https://esm.sh/@vercel/blob@${version}/client`;
+            console.log("[upload DEBUG] import client da:", url);
+            const mod = await import(url);
             return mod.upload;
         })();
     }
@@ -617,12 +621,26 @@ async function uploadWithTimeout(pathname, file, onProgress) {
     // rimosso perché upload() lo ricava già correttamente dal File stesso,
     // e passarlo esplicitamente era un valore ridondante che poteva
     // contribuire a una richiesta non conforme a quanto il token si aspettava.
-    const uploadPromise = uploadFn(pathname, file, {
+    const uploadOptions = {
         access: "public",
         handleUploadUrl: "/api/admin/photos/upload-token",
         multipart: file.size > 6 * 1024 * 1024,
         abortSignal: controller.signal,
         onUploadProgress: ({ percentage }) => onProgress(percentage),
+    };
+
+    // --- LOG TEMPORANEO DI DEBUG: rimuovere una volta trovata la causa del 400 ---
+    console.log("[upload DEBUG] chiamata upload() — pathname:", pathname, "file:", file.name, file.size, file.type, "opzioni:", uploadOptions);
+    // --- FINE LOG TEMPORANEO ---
+
+    const uploadPromise = uploadFn(pathname, file, uploadOptions).catch((err) => {
+        // --- LOG TEMPORANEO DI DEBUG: rimuovere una volta trovata la causa del 400 ---
+        console.error("[upload DEBUG] errore completo da upload():", err);
+        console.error("[upload DEBUG] err.message:", err && err.message);
+        console.error("[upload DEBUG] err.cause:", err && err.cause);
+        console.error("[upload DEBUG] err.response:", err && err.response);
+        // --- FINE LOG TEMPORANEO ---
+        throw err;
     });
 
     return Promise.race([uploadPromise, timeout]);
