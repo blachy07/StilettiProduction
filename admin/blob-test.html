@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test isolato — Vercel Blob upload()</title>
+    <meta name="robots" content="noindex, nofollow">
+    <style>
+        body {
+            background: #050505;
+            color: #eee;
+            font-family: monospace;
+            padding: 30px;
+            max-width: 720px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+        h1 { font-size: 18px; }
+        h2 { font-size: 15px; margin-top: 36px; color: #ff2d55; }
+        p { color: #aaa; }
+        code { background: #1a1a1a; padding: 1px 6px; border-radius: 4px; }
+        a { color: #ff2d55; }
+        button {
+            background: transparent;
+            border: 1px solid #ff2d55;
+            color: #ff2d55;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 6px;
+            margin-left: 10px;
+        }
+        button:hover { background: #ff2d55; color: #fff; }
+        pre {
+            background: #111;
+            border: 1px solid #222;
+            padding: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            border-radius: 6px;
+            min-height: 20px;
+        }
+        #auth-status { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Test isolato — upload() ufficiale di Vercel Blob</h1>
+    <p>
+        Questa pagina è completamente indipendente dal resto del progetto: nessuna dipendenza da
+        Supabase, dashboard, coda di upload, retry o UI. Usa esclusivamente <code>upload()</code>
+        di <code>@vercel/blob/client</code> (versione 2.6.1, la stessa confermata installata lato
+        server) contro l'endpoint reale <code>/api/admin/photos/upload-token</code>, invariato.
+    </p>
+    <p id="auth-status">Verifica sessione admin in corso...</p>
+
+    <h2>Test 1 — upload semplice (nessuna opzione multipart)</h2>
+    <p>Corrisponde esattamente all'esempio minimo della documentazione ufficiale.</p>
+    <input type="file" id="file-input-simple">
+    <button id="btn-simple" type="button">Carica (semplice)</button>
+    <pre id="output-simple">Pronto.</pre>
+
+    <h2>Test 2 — upload con <code>multipart: true</code></h2>
+    <p>Stessa chiamata, con l'unica opzione documentata aggiuntiva per file grandi.</p>
+    <input type="file" id="file-input-multipart">
+    <button id="btn-multipart" type="button">Carica (multipart)</button>
+    <pre id="output-multipart">Pronto.</pre>
+
+    <script type="module" src="blob-test.js"></script>
+</body>
+</html>
