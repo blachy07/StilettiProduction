@@ -58,6 +58,7 @@ module.exports = async (req, res) => {
         return {
           allowedContentTypes: ALLOWED_TYPES,
           addRandomSuffix: true,
+          tokenPayload: JSON.stringify({}),
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
