@@ -645,6 +645,43 @@ function uploadWithTimeout(pathname, file, onProgress) {
     });
 }
 
+// Genera una copia compressa (max 1600px sul lato lungo, JPEG qualità 0.75)
+// da mostrare nella galleria del cliente al posto dell'originale, che resta
+// intatto per il download. HEIC/HEIF non sono decodificabili da <canvas> in
+// quasi nessun browser: in quel caso (o per qualunque altro errore di
+// decodifica) si rinuncia alla preview, non si blocca l'upload — la galleria
+// userà semplicemente l'originale per quel file (comportamento di oggi).
+function generateImagePreview(file) {
+    return new Promise((resolve) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+
+        const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+        img.onload = () => {
+            const maxDim = 1600;
+            const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => {
+                cleanup();
+                resolve(blob ? new File([blob], file.name, { type: "image/jpeg" }) : null);
+            }, "image/jpeg", 0.75);
+        };
+
+        img.onerror = () => {
+            cleanup();
+            resolve(null);
+        };
+
+        img.src = objectUrl;
+    });
+}
+
 async function finalizeItem(item, blob) {
     const res = await fetch("/api/admin/photos/finalize", {
         method: "POST",
@@ -657,6 +694,8 @@ async function finalizeItem(item, blob) {
             contentType: item.file.type,
             size: item.file.size,
             position: item.position,
+            previewUrl: item.previewBlob ? item.previewBlob.url : null,
+            previewPathname: item.previewBlob ? item.previewBlob.pathname : null,
         }),
     });
     const data = await res.json();
@@ -689,7 +728,21 @@ async function attemptItem(item) {
             }
 
             setItemState(item, "processing", "Elaborazione…");
-            await sleep(120);
+            if (item.previewPathname && !item.previewBlob) {
+                try {
+                    const previewFile = await generateImagePreview(item.file);
+                    if (previewFile) {
+                        item.previewBlob = await uploadWithTimeout(item.previewPathname, previewFile, () => {});
+                    }
+                } catch {
+                    // Best-effort: se la generazione o il caricamento dell'anteprima
+                    // falliscono (es. HEIC non decodificabile dal browser), non si
+                    // blocca l'upload del file originale per una funzionalità
+                    // accessoria — la galleria userà l'originale per questo file.
+                }
+            } else {
+                await sleep(120);
+            }
 
             setItemState(item, "saving", "Salvataggio…");
             markManifest(item.file, "saving");
@@ -810,12 +863,20 @@ function handleFiles(files) {
         }
 
         nextPosition += 1000;
+        const uploadStamp = Date.now();
+        const isImage = (file.type || "").startsWith("image/");
         const item = {
             file,
             row,
             position: nextPosition,
-            pathname: `deliveries/${deliverySlug}/${Date.now()}-${safeName(file.name)}`,
+            pathname: `deliveries/${deliverySlug}/${uploadStamp}-${safeName(file.name)}`,
+            // Solo per le immagini: percorso della versione compressa mostrata
+            // nella galleria del cliente. I video non hanno preview.
+            previewPathname: isImage
+                ? `deliveries/${deliverySlug}/previews/${uploadStamp}-${safeName(file.name)}`
+                : null,
             blob: null,
+            previewBlob: null,
             offlineCaused: false,
         };
         row.querySelector(".retry-item").addEventListener("click", () => retryItem(item));

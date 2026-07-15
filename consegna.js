@@ -160,7 +160,7 @@ function renderGallery(images) {
         item.className = "gallery-photo";
 
         const img = document.createElement("img");
-        img.dataset.src = photo.url;
+        img.dataset.src = photo.previewUrl;
         img.alt = photo.name;
         item.appendChild(img);
 

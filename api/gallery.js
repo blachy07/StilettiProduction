@@ -50,6 +50,9 @@ module.exports = async (req, res) => {
     id: p.id,
     name: p.filename,
     url: p.blob_url,
+    // Fallback sull'originale se manca (video, o foto caricate prima
+    // dell'introduzione della preview, o generazione preview fallita).
+    previewUrl: p.preview_url || p.blob_url,
   }));
 
   res.status(200).json({

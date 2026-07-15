@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     }
   }
 
-  const { deliveryId, blobUrl, pathname, filename, contentType, size, position } = body || {};
+  const { deliveryId, blobUrl, pathname, filename, contentType, size, position, previewUrl, previewPathname } = body || {};
   if (!deliveryId || !blobUrl || !pathname || !filename || typeof position !== "number") {
     res.status(400).json({ ok: false, error: "bad_request" });
     return;
@@ -34,6 +34,8 @@ module.exports = async (req, res) => {
       content_type: contentType || null,
       size_bytes: size || null,
       position,
+      preview_url: previewUrl || null,
+      preview_pathname: previewPathname || null,
     })
     .select()
     .single();

@@ -17,11 +17,16 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { data: photo } = await supabase.from("photos").select("storage_pathname").eq("id", id).maybeSingle();
+  const { data: photo } = await supabase
+    .from("photos")
+    .select("storage_pathname, preview_pathname")
+    .eq("id", id)
+    .maybeSingle();
 
-  if (photo && photo.storage_pathname) {
+  const paths = photo ? [photo.storage_pathname, photo.preview_pathname].filter(Boolean) : [];
+  if (paths.length) {
     try {
-      await supabase.storage.from(BUCKET).remove([photo.storage_pathname]);
+      await supabase.storage.from(BUCKET).remove(paths);
     } catch {
       // best-effort: non blocca l'eliminazione della riga dal database
     }

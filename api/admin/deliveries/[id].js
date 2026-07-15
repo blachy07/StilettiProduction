@@ -96,10 +96,13 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === "DELETE") {
-    const { data: photos } = await supabase.from("photos").select("storage_pathname").eq("delivery_id", id);
+    const { data: photos } = await supabase
+      .from("photos")
+      .select("storage_pathname, preview_pathname")
+      .eq("delivery_id", id);
 
     if (photos && photos.length) {
-      const paths = photos.map((p) => p.storage_pathname).filter(Boolean);
+      const paths = photos.flatMap((p) => [p.storage_pathname, p.preview_pathname]).filter(Boolean);
       if (paths.length) {
         try {
           await supabase.storage.from(BUCKET).remove(paths);
