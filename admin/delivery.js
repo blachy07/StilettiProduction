@@ -1,36 +1,10 @@
 // upload() viene caricata da CDN (esm.sh) invece che bundlata come dipendenza,
 // perché il sito non ha uno step di build. Il protocollo di token tra client
-// e server è specifico della versione: caricare "@latest" dal CDN mentre il
-// server usa una versione diversa (risolta indipendentemente da npm install)
-// produce esattamente il sintomo osservato — il token si genera con successo,
-// ma la richiesta diretta verso lo storage Vercel viene rifiutata con 400.
-// Per eliminare la possibilità di questo disallineamento, la versione esatta
-// viene chiesta al server (che la legge dalla propria dipendenza realmente
-// installata) e il client importa dal CDN quella stessa identica versione.
-let uploadFnPromise = null;
-
-function getUploadFn() {
-    if (!uploadFnPromise) {
-        uploadFnPromise = (async () => {
-            let version = "latest";
-            try {
-                const res = await fetch("/api/admin/blob-version");
-                const data = await res.json();
-                // --- LOG TEMPORANEO DI DEBUG: rimuovere una volta trovata la causa del 400 ---
-                console.log("[upload DEBUG] risposta /api/admin/blob-version:", data);
-                // --- FINE LOG TEMPORANEO ---
-                if (data && data.ok && data.version) version = data.version;
-            } catch (err) {
-                console.log("[upload DEBUG] errore nel leggere la versione dal server:", err);
-            }
-            const url = `https://esm.sh/@vercel/blob@${version}/client`;
-            console.log("[upload DEBUG] import client da:", url);
-            const mod = await import(url);
-            return mod.upload;
-        })();
-    }
-    return uploadFnPromise;
-}
+// e server è specifico della versione: il server ha @vercel/blob 2.6.1
+// (confermato dai log), quindi il client importa da CDN esattamente quella
+// stessa versione, fissa — nessun "latest", nessuna determinazione dinamica.
+import { upload } from "https://esm.sh/@vercel/blob@2.6.1/client";
+console.log("[upload DEBUG] import client da: https://esm.sh/@vercel/blob@2.6.1/client");
 
 const params = new URLSearchParams(window.location.search);
 const deliveryId = params.get("id");
@@ -606,7 +580,6 @@ function buildUploadRow(file) {
 // affidabile anche nel caso, sotto carico o su reti instabili, in cui una
 // chiamata resti sospesa senza mai risolvere né rigettare.
 async function uploadWithTimeout(pathname, file, onProgress) {
-    const uploadFn = await getUploadFn();
     const controller = new AbortController();
     const timeoutMs = uploadTimeoutMs(file);
 
@@ -633,7 +606,7 @@ async function uploadWithTimeout(pathname, file, onProgress) {
     console.log("[upload DEBUG] chiamata upload() — pathname:", pathname, "file:", file.name, file.size, file.type, "opzioni:", uploadOptions);
     // --- FINE LOG TEMPORANEO ---
 
-    const uploadPromise = uploadFn(pathname, file, uploadOptions).catch((err) => {
+    const uploadPromise = upload(pathname, file, uploadOptions).catch((err) => {
         // --- LOG TEMPORANEO DI DEBUG: rimuovere una volta trovata la causa del 400 ---
         console.error("[upload DEBUG] errore completo da upload():", err);
         console.error("[upload DEBUG] err.message:", err && err.message);
