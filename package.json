@@ -6,7 +6,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "postinstall": "mkdir -p admin/vendor && cp node_modules/tus-js-client/dist/tus.min.js admin/vendor/tus.min.js"
+    "build": "mkdir -p admin/vendor && cp node_modules/tus-js-client/dist/tus.min.js admin/vendor/tus.min.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",
