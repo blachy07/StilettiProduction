@@ -4,3 +4,7 @@ node_modules/
 .env.*.local
 .vercel/
 .DS_Store
+
+# Generato da "postinstall" (package.json) a ogni deploy, da tus-js-client:
+# non va committato, sempre rigenerato dalla versione pinnata in package.json.
+admin/vendor/

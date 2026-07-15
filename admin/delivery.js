@@ -1,11 +1,3 @@
-// upload() viene caricata da CDN (esm.sh) invece che bundlata come dipendenza,
-// perché il sito non ha uno step di build. Il protocollo di token tra client
-// e server è specifico della versione: il server ha @vercel/blob 2.6.1
-// (confermato dai log), quindi il client importa da CDN esattamente quella
-// stessa versione, fissa — nessun "latest", nessuna determinazione dinamica.
-import { upload } from "https://esm.sh/@vercel/blob@2.6.1/client";
-console.log("[upload DEBUG] import client da: https://esm.sh/@vercel/blob@2.6.1/client");
-
 const params = new URLSearchParams(window.location.search);
 const deliveryId = params.get("id");
 
@@ -575,48 +567,82 @@ function buildUploadRow(file) {
     return row;
 }
 
-// Il timeout esplicito (AbortController + Promise.race) resta comunque utile
-// indipendentemente dal bug di versione corretto sopra: rende il sistema
-// affidabile anche nel caso, sotto carico o su reti instabili, in cui una
-// chiamata resti sospesa senza mai risolvere né rigettare.
-async function uploadWithTimeout(pathname, file, onProgress) {
-    const controller = new AbortController();
+// Motore di upload: Supabase Storage via protocollo TUS (tus-js-client,
+// caricato come script globale in delivery.html — vedi window.tus). Nessun
+// byte del file passa da una Vercel Function: il browser carica direttamente
+// sull'host di storage Supabase, autorizzato da un token firmato monouso
+// (/api/admin/photos/upload-authorize) generato lato server con la
+// service-role key. Il timeout si riarma a ogni chunk ricevuto, così una
+// connessione lenta ma viva non viene interrotta, mentre uno stallo reale
+// (nessun progresso per tutta la finestra) fa comunque scattare l'abort.
+function uploadWithTimeout(pathname, file, onProgress) {
     const timeoutMs = uploadTimeoutMs(file);
 
-    const timeout = new Promise((_, reject) => {
-        setTimeout(() => {
-            controller.abort();
-            reject(new Error("timeout: rete troppo lenta o upload bloccato"));
-        }, timeoutMs);
+    return new Promise((resolve, reject) => {
+        let upload = null;
+        let timer = null;
+        const arm = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                if (upload) upload.abort(true);
+                reject(new Error("timeout: rete troppo lenta o upload bloccato"));
+            }, timeoutMs);
+        };
+
+        fetch("/api/admin/photos/upload-authorize", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pathname, contentType: file.type }),
+        })
+            .then((res) => res.json().then((data) => ({ res, data })))
+            .then(({ res, data }) => {
+                if (!res.ok || !data.ok) {
+                    throw new Error(data.error || `autorizzazione upload fallita (${res.status})`);
+                }
+
+                upload = new window.tus.Upload(file, {
+                    endpoint: data.tusEndpoint,
+                    retryDelays: [],
+                    uploadDataDuringCreation: true,
+                    removeFingerprintOnSuccess: true,
+                    headers: {
+                        authorization: `Bearer ${data.apikey}`,
+                        apikey: data.apikey,
+                        "x-signature": data.token,
+                        "x-upsert": "false",
+                    },
+                    metadata: {
+                        bucketName: data.bucket,
+                        objectName: data.path,
+                        contentType: file.type,
+                        cacheControl: "3600",
+                    },
+                    chunkSize: 6 * 1024 * 1024,
+                    onError: (err) => {
+                        clearTimeout(timer);
+                        reject(err instanceof Error ? err : new Error(String(err)));
+                    },
+                    onProgress: (bytesUploaded, bytesTotal) => {
+                        arm();
+                        onProgress((bytesUploaded / bytesTotal) * 100);
+                    },
+                    onSuccess: () => {
+                        clearTimeout(timer);
+                        resolve({ url: data.publicUrl, pathname: data.path });
+                    },
+                });
+
+                arm();
+                return upload.findPreviousUploads().then((previousUploads) => {
+                    if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
+                    upload.start();
+                });
+            })
+            .catch((err) => {
+                clearTimeout(timer);
+                reject(err);
+            });
     });
-
-    // Opzioni ridotte al set minimo documentato: "contentType" è stato
-    // rimosso perché upload() lo ricava già correttamente dal File stesso,
-    // e passarlo esplicitamente era un valore ridondante che poteva
-    // contribuire a una richiesta non conforme a quanto il token si aspettava.
-    const uploadOptions = {
-        access: "public",
-        handleUploadUrl: "/api/admin/photos/upload-token",
-        multipart: file.size > 6 * 1024 * 1024,
-        abortSignal: controller.signal,
-        onUploadProgress: ({ percentage }) => onProgress(percentage),
-    };
-
-    // --- LOG TEMPORANEO DI DEBUG: rimuovere una volta trovata la causa del 400 ---
-    console.log("[upload DEBUG] chiamata upload() — pathname:", pathname, "file:", file.name, file.size, file.type, "opzioni:", uploadOptions);
-    // --- FINE LOG TEMPORANEO ---
-
-    const uploadPromise = upload(pathname, file, uploadOptions).catch((err) => {
-        // --- LOG TEMPORANEO DI DEBUG: rimuovere una volta trovata la causa del 400 ---
-        console.error("[upload DEBUG] errore completo da upload():", err);
-        console.error("[upload DEBUG] err.message:", err && err.message);
-        console.error("[upload DEBUG] err.cause:", err && err.cause);
-        console.error("[upload DEBUG] err.response:", err && err.response);
-        // --- FINE LOG TEMPORANEO ---
-        throw err;
-    });
-
-    return Promise.race([uploadPromise, timeout]);
 }
 
 async function finalizeItem(item, blob) {

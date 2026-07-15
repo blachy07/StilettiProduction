@@ -1,6 +1,8 @@
 const { supabase } = require("../../_lib/db");
 const { requireAdmin } = require("../../_lib/admin-guard");
 
+const BUCKET = "deliveries";
+
 module.exports = async (req, res) => {
   if (!requireAdmin(req, res)) return;
 
@@ -94,14 +96,13 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === "DELETE") {
-    const { data: photos } = await supabase.from("photos").select("blob_url").eq("delivery_id", id);
+    const { data: photos } = await supabase.from("photos").select("storage_pathname").eq("delivery_id", id);
 
     if (photos && photos.length) {
-      const urls = photos.map((p) => p.blob_url).filter((u) => u && !u.startsWith("/consegne/"));
-      if (urls.length) {
+      const paths = photos.map((p) => p.storage_pathname).filter(Boolean);
+      if (paths.length) {
         try {
-          const { del } = require("@vercel/blob");
-          await del(urls);
+          await supabase.storage.from(BUCKET).remove(paths);
         } catch {
           // best-effort: non blocca l'eliminazione della consegna dal database
         }

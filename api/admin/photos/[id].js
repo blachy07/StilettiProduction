@@ -1,6 +1,8 @@
 const { supabase } = require("../../_lib/db");
 const { requireAdmin } = require("../../_lib/admin-guard");
 
+const BUCKET = "deliveries";
+
 module.exports = async (req, res) => {
   if (!requireAdmin(req, res)) return;
 
@@ -15,12 +17,11 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { data: photo } = await supabase.from("photos").select("blob_url").eq("id", id).maybeSingle();
+  const { data: photo } = await supabase.from("photos").select("storage_pathname").eq("id", id).maybeSingle();
 
-  if (photo && photo.blob_url && !photo.blob_url.startsWith("/consegne/")) {
+  if (photo && photo.storage_pathname) {
     try {
-      const { del } = require("@vercel/blob");
-      await del(photo.blob_url);
+      await supabase.storage.from(BUCKET).remove([photo.storage_pathname]);
     } catch {
       // best-effort: non blocca l'eliminazione della riga dal database
     }
